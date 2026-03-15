@@ -7,6 +7,8 @@ import { clearAllInteractionState } from "../../interaction/cleanup.js";
 import { summaryAggregator } from "../../summary/aggregator.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
 import { keyboardManager } from "../../keyboard/manager.js";
+import { selectAgent, fetchSessionAgentAndModel } from "../../agent/manager.js";
+import { selectModel } from "../../model/manager.js";
 import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,
@@ -247,6 +249,30 @@ export async function handleSessionSelect(ctx: Context, deps: SessionSelectDeps)
     summaryAggregator.clear();
     summaryAggregator.setSession(session.id);
     clearAllInteractionState("session_switched");
+
+    // Restore agent + model from session history
+    const sessionState = await fetchSessionAgentAndModel(session.id, currentProject.worktree);
+    if (sessionState) {
+      selectAgent(sessionState.agent);
+      keyboardManager.updateAgent(sessionState.agent);
+
+      if (sessionState.model) {
+        selectModel({
+          providerID: sessionState.model.providerID,
+          modelID: sessionState.model.modelID,
+          variant: sessionState.variant || "default",
+        });
+        keyboardManager.updateModel({
+          providerID: sessionState.model.providerID,
+          modelID: sessionState.model.modelID,
+          variant: sessionState.variant || "default",
+        });
+      }
+
+      logger.info(
+        `[Sessions] Restored session state: agent=${sessionState.agent}, model=${sessionState.model ? `${sessionState.model.providerID}/${sessionState.model.modelID}` : "default"}`,
+      );
+    }
 
     safeBackgroundTask({
       taskName: "sessions.ensureEventSubscription",

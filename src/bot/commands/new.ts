@@ -7,8 +7,8 @@ import { clearAllInteractionState } from "../../interaction/cleanup.js";
 import { summaryAggregator } from "../../summary/aggregator.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
 import { keyboardManager } from "../../keyboard/manager.js";
-import { getStoredAgent } from "../../agent/manager.js";
-import { getStoredModel } from "../../model/manager.js";
+import { getStoredAgent, getAgentDefaultModel } from "../../agent/manager.js";
+import { getStoredModel, selectModel } from "../../model/manager.js";
 import { formatVariantForButton } from "../../variant/manager.js";
 import { createMainKeyboard } from "../utils/keyboard.js";
 import { safeBackgroundTask } from "../../utils/safe-background-task.js";
@@ -73,8 +73,17 @@ export async function newCommand(ctx: CommandContext<Context>, deps: NewCommandD
       logger.error("[Bot] Error creating pinned message:", err);
     }
 
-    // Get current state for keyboard
+    // Reset to default agent and its configured model for new session
     const currentAgent = getStoredAgent();
+    const agentDefaultModel = await getAgentDefaultModel(currentAgent);
+    if (agentDefaultModel) {
+      selectModel({
+        providerID: agentDefaultModel.providerID,
+        modelID: agentDefaultModel.modelID,
+        variant: "default",
+      });
+    }
+
     const currentModel = getStoredModel();
     const contextInfo = pinnedMessageManager.getContextInfo();
     const variantName = formatVariantForButton(currentModel.variant || "default");

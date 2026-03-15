@@ -1,7 +1,12 @@
 import { Context, InlineKeyboard } from "grammy";
-import { selectAgent, getAvailableAgents, fetchCurrentAgent } from "../../agent/manager.js";
+import {
+  selectAgent,
+  getAvailableAgents,
+  fetchCurrentAgent,
+  getAgentDefaultModel,
+} from "../../agent/manager.js";
 import { getAgentDisplayName, getAgentEmoji } from "../../agent/types.js";
-import { getStoredModel } from "../../model/manager.js";
+import { selectModel, getStoredModel } from "../../model/manager.js";
 import { formatVariantForButton } from "../../variant/manager.js";
 import { logger } from "../../utils/logger.js";
 import { createMainKeyboard } from "../utils/keyboard.js";
@@ -47,10 +52,22 @@ export async function handleAgentSelect(ctx: Context): Promise<boolean> {
     // Select agent and persist
     selectAgent(agentName);
 
+    // Switch model to agent's configured default from OpenCode
+    const agentDefaultModel = await getAgentDefaultModel(agentName);
+    if (agentDefaultModel) {
+      selectModel({
+        providerID: agentDefaultModel.providerID,
+        modelID: agentDefaultModel.modelID,
+        variant: "default",
+      });
+      logger.info(
+        `[AgentHandler] Switched model to agent default: ${agentDefaultModel.providerID}/${agentDefaultModel.modelID}`,
+      );
+    }
+
     // Update keyboard manager state
     keyboardManager.updateAgent(agentName);
 
-    // Update Reply Keyboard with new agent, current model, and context
     const currentModel = getStoredModel();
     const contextInfo =
       pinnedMessageManager.getContextInfo() ??

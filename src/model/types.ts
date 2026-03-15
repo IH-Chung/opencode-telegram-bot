@@ -27,9 +27,14 @@ export interface ModelSelectionLists {
  * Format model for button display (compact format)
  * @param providerID Provider ID
  * @param modelID Model ID
- * @returns Formatted string "providerID/modelID"
+ * @returns Formatted string "providerID/modelID" or "🤖 Auto" if not set
  */
 export function formatModelForButton(providerID: string, modelID: string): string {
+  // If no explicit model selected, show "Auto" (OpenCode will use agent default)
+  if (!providerID || !modelID) {
+    return "🤖 Auto";
+  }
+
   // If model name is too long, we only truncate the model part
   const displayModelId = modelID.length > 20 ? `${modelID.substring(0, 17)}...` : modelID;
   const displayProviderId =
@@ -42,8 +47,11 @@ export function formatModelForButton(providerID: string, modelID: string): strin
  * Format model for display in messages (full format)
  * @param providerID Provider ID
  * @param modelID Model ID
- * @returns Formatted string "providerID / modelID"
+ * @returns Formatted string "providerID / modelID" or "Auto (agent default)" if not set
  */
 export function formatModelForDisplay(providerID: string, modelID: string): string {
+  if (!providerID || !modelID) {
+    return "Auto (agent default)";
+  }
   return `${providerID} / ${modelID}`;
 }

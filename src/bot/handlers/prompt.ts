@@ -232,7 +232,7 @@ export async function processUserPrompt(
       agent: currentAgent,
     };
 
-    // Use stored model (from settings or config)
+    // Use stored model (from agent default or explicit user selection)
     if (storedModel.providerID && storedModel.modelID) {
       promptOptions.model = {
         providerID: storedModel.providerID,

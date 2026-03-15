@@ -1,4 +1,12 @@
 /**
+ * Agent's default model configuration
+ */
+export interface AgentDefaultModel {
+  providerID: string;
+  modelID: string;
+}
+
+/**
  * Agent information from OpenCode API
  */
 export interface AgentInfo {
@@ -8,6 +16,7 @@ export interface AgentInfo {
   mode: "subagent" | "primary" | "all";
   hidden?: boolean;
   steps?: number;
+  model?: AgentDefaultModel;
 }
 
 /**

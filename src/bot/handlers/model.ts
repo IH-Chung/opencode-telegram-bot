@@ -19,6 +19,48 @@ import { config } from "../../config.js";
 
 const MODEL_PAGE_CALLBACK_PREFIX = "model:page:";
 
+/**
+ * Cache for model callbacks to avoid Telegram's 64-byte limit.
+ * Maps short identifiers to model data.
+ */
+const modelCallbackCache = new Map<string, { providerID: string; modelID: string }>();
+let modelCallbackCounter = 0;
+
+/**
+ * Generate a short callback identifier for a model.
+ * Telegram callback data must be ≤64 bytes. "model:provider:modelID" can exceed this.
+ */
+function encodeModelCallback(providerID: string, modelID: string): string {
+  const shortId = `${modelCallbackCounter++}`;
+  modelCallbackCache.set(shortId, { providerID, modelID });
+
+  // Clean old entries if cache grows too large (keep last 200)
+  if (modelCallbackCache.size > 200) {
+    const keysToDelete: string[] = [];
+    let count = 0;
+    for (const key of modelCallbackCache.keys()) {
+      if (count < modelCallbackCache.size - 200) {
+        keysToDelete.push(key);
+        count++;
+      } else {
+        break;
+      }
+    }
+    for (const key of keysToDelete) {
+      modelCallbackCache.delete(key);
+    }
+  }
+  return `model:${shortId}`;
+}
+
+/**
+ * Decode a model callback identifier back to providerID and modelID.
+ */
+function decodeModelCallback(data: string): { providerID: string; modelID: string } | null {
+  const shortId = data.slice("model:".length);
+  return modelCallbackCache.get(shortId) ?? null;
+}
+
 export interface ModelListItem {
   model: FavoriteModel;
   isFavorite: boolean;
@@ -85,9 +127,9 @@ function buildModelMenuText(
   return `${baseText}
 
 ${t("model.menu.page_indicator", {
-    current: String(page + 1),
-    total: String(totalPages),
-  })}`;
+  current: String(page + 1),
+  total: String(totalPages),
+})}`;
 }
 
 function buildModelKeyboard(
@@ -97,18 +139,23 @@ function buildModelKeyboard(
   pageSize: number,
 ): InlineKeyboard {
   const keyboard = new InlineKeyboard();
-  const { page: normalizedPage, totalPages, startIndex, endIndex } =
-    calculateModelsPaginationRange(combined.length, page, pageSize);
+  const {
+    page: normalizedPage,
+    totalPages,
+    startIndex,
+    endIndex,
+  } = calculateModelsPaginationRange(combined.length, page, pageSize);
 
   combined.slice(startIndex, endIndex).forEach(({ model, isFavorite }) => {
     const isActive =
       currentModel &&
       model.providerID === currentModel.providerID &&
       model.modelID === currentModel.modelID;
-    const prefix = isFavorite ? "⭐" : "U0001f558";
+    const prefix = isFavorite ? "⭐" : "📝";
     const label = `${prefix} ${model.providerID}/${model.modelID}`;
     const labelWithCheck = isActive ? `✅ ${label}` : label;
-    keyboard.text(labelWithCheck, `model:${model.providerID}:${model.modelID}`).row();
+    const callbackData = encodeModelCallback(model.providerID, model.modelID);
+    keyboard.text(labelWithCheck, callbackData).row();
   });
 
   if (totalPages > 1) {
@@ -184,17 +231,16 @@ export async function handleModelSelect(ctx: Context): Promise<boolean> {
       keyboardManager.initialize(ctx.api, ctx.chat.id);
     }
 
-    // Parse callback data: "model:providerID:modelID"
-    const parts = callbackQuery.data.split(":");
-    if (parts.length < 3) {
-      logger.error(`[ModelHandler] Invalid callback data format: ${callbackQuery.data}`);
+    // Decode model from short callback identifier
+    const modelData = decodeModelCallback(callbackQuery.data);
+    if (!modelData) {
+      logger.error(`[ModelHandler] Invalid callback data: ${callbackQuery.data}`);
       clearActiveInlineMenu("model_select_invalid_callback");
       await ctx.answerCallbackQuery({ text: t("model.change_error_callback") }).catch(() => {});
       return true;
     }
 
-    const providerID = parts[1];
-    const modelID = parts.slice(2).join(":"); // Handle model IDs that may contain ":"
+    const { providerID, modelID } = modelData;
 
     const modelInfo: ModelInfo = {
       providerID,
