@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { createBot } from "../bot/index.js";
+import { createBot, autoSubscribeEvents } from "../bot/index.js";
 import { config } from "../config.js";
 import { loadSettings } from "../settings/manager.js";
 import { processManager } from "../process/manager.js";
@@ -46,6 +46,9 @@ export async function startBotApp(): Promise<void> {
     await bot.api.deleteWebhook();
     logger.info("[Bot] Webhook removed, switching to long polling");
   }
+
+  // Auto-subscribe to SSE events for saved project (enables GUI→Telegram sync at startup)
+  await autoSubscribeEvents(bot);
 
   await bot.start({
     onStart: (botInfo) => {

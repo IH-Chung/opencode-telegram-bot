@@ -41,6 +41,7 @@ import { handleVariantSelect, showVariantSelectionMenu } from "./handlers/varian
 import { handleContextButtonPress, handleCompactConfirm } from "./handlers/context.js";
 import { handleInlineMenuCancel } from "./handlers/inline-menu.js";
 import { questionManager } from "../question/manager.js";
+import { permissionManager } from "../permission/manager.js";
 import { interactionManager } from "../interaction/manager.js";
 import { clearAllInteractionState } from "../interaction/cleanup.js";
 import { keyboardManager } from "../keyboard/manager.js";
@@ -50,6 +51,7 @@ import { formatSummary, formatToolInfo, getAssistantParseMode } from "../summary
 import { ToolMessageBatcher } from "../summary/tool-message-batcher.js";
 import { getCurrentSession } from "../session/manager.js";
 import { ingestSessionInfoForCache } from "../session/cache-manager.js";
+import { getCurrentProject } from "../settings/manager.js";
 import { logger } from "../utils/logger.js";
 import { safeBackgroundTask } from "../utils/safe-background-task.js";
 import { pinnedMessageManager } from "../pinned/manager.js";
@@ -58,14 +60,35 @@ import { processUserPrompt } from "./handlers/prompt.js";
 import { handleVoiceMessage } from "./handlers/voice.js";
 import { handleDocumentMessage } from "./handlers/document.js";
 import { downloadTelegramFile, toDataUri } from "./utils/file-download.js";
-import { sendBotText } from "./utils/telegram-text.js";
+import { sendMessageWithMarkdownFallback } from "./utils/send-with-markdown-fallback.js";
 import { getModelCapabilities, supportsInput } from "../model/capabilities.js";
 import { getStoredModel } from "../model/manager.js";
+import { opencodeClient } from "../opencode/client.js";
+import { shouldForwardAssistantReply } from "./utils/assistant-reply-forwarding.js";
+import { startMessagePolling, stopMessagePolling } from "../opencode/message-poller.js";
+import {
+  startQuestionPoller,
+  stopQuestionPoller,
+  markQuestionSeen,
+} from "../opencode/question-poller.js";
 import type { FilePartInput } from "@opencode-ai/sdk/v2";
 
 let botInstance: Bot<Context> | null = null;
 let chatIdInstance: number | null = null;
 let commandsInitialized = false;
+
+// Track the last question/permission requestID that the BOT itself replied to,
+// so we can distinguish bot-initiated replies from external (GUI) replies.
+let lastBotQuestionReplyID: string | null = null;
+let lastBotPermissionReplyID: string | null = null;
+
+export function markBotQuestionReply(requestID: string): void {
+  lastBotQuestionReplyID = requestID;
+}
+
+export function markBotPermissionReply(requestID: string): void {
+  lastBotPermissionReplyID = requestID;
+}
 
 const TELEGRAM_DOCUMENT_CAPTION_MAX_LENGTH = 1024;
 const SESSION_RETRY_PREFIX = "🔁";
@@ -167,9 +190,16 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     return;
   }
 
+  // Ensure aggregator has bot reference for typing indicators
+  if (botInstance && chatIdInstance) {
+    summaryAggregator.setBotAndChatId(botInstance, chatIdInstance);
+  }
+
   toolMessageBatcher.setIntervalSeconds(config.bot.serviceMessagesIntervalSec);
   summaryAggregator.setOnCleared(() => {
     toolMessageBatcher.clearAll("summary_aggregator_clear");
+    stopMessagePolling();
+    stopQuestionPoller();
   });
 
   summaryAggregator.setOnComplete(async (sessionId, messageText) => {
@@ -179,7 +209,30 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     }
 
     const currentSession = getCurrentSession();
-    if (currentSession?.id !== sessionId) {
+    const currentProject = getCurrentProject();
+
+    const shouldForward = await shouldForwardAssistantReply({
+      sessionId,
+      currentSessionId: currentSession?.id,
+      currentProjectDirectory: currentProject?.worktree,
+      sessionExistsInProject: async (targetSessionId, directory) => {
+        const { data: sessionInfo, error } = await opencodeClient.session.get({
+          sessionID: targetSessionId,
+          directory,
+        });
+
+        if (error || !sessionInfo) {
+          return false;
+        }
+
+        logger.debug(
+          `[Bot] Forwarding assistant reply from project-matched session: ${targetSessionId} (${sessionInfo.title})`,
+        );
+        return true;
+      },
+    });
+
+    if (!shouldForward) {
       return;
     }
 
@@ -188,7 +241,6 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     try {
       const parts = formatSummary(messageText);
       const assistantParseMode = getAssistantParseMode();
-      const assistantMessageFormat = assistantParseMode === "MarkdownV2" ? "markdown_v2" : "raw";
 
       logger.debug(
         `[Bot] Sending completed message to Telegram (chatId=${chatIdInstance}, parts=${parts.length})`,
@@ -200,12 +252,12 @@ async function ensureEventSubscription(directory: string): Promise<void> {
           isLastPart && keyboardManager.isInitialized() ? keyboardManager.getKeyboard() : undefined;
         const options = keyboard ? { reply_markup: keyboard } : undefined;
 
-        await sendBotText({
+        await sendMessageWithMarkdownFallback({
           api: botInstance.api,
           chatId: chatIdInstance,
           text: parts[i],
           options,
-          format: assistantMessageFormat,
+          parseMode: assistantParseMode,
         });
       }
     } catch (err) {
@@ -292,6 +344,7 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     }
 
     logger.info(`[Bot] Received ${questions.length} questions from agent, requestID=${requestID}`);
+    markQuestionSeen(requestID);
     questionManager.startQuestions(questions, requestID);
     await showCurrentQuestion(botInstance.api, chatIdInstance);
   });
@@ -310,6 +363,77 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     }
 
     clearAllInteractionState("question_error");
+  });
+
+  // Handle question answered externally (e.g., from GUI) — "first answer wins"
+  summaryAggregator.setOnQuestionExternalReply((requestID) => {
+    // If the bot itself sent this reply, ignore (not external)
+    if (lastBotQuestionReplyID === requestID) {
+      lastBotQuestionReplyID = null;
+      logger.debug(`[Bot] Ignoring question.replied for bot's own reply: ${requestID}`);
+      return;
+    }
+
+    if (!questionManager.isActive()) return;
+
+    // Check if this reply is for our active question
+    const activeRequestID = questionManager.getRequestID();
+    if (activeRequestID && activeRequestID !== requestID) return;
+
+    logger.info(
+      `[Bot] Question answered externally (GUI): requestID=${requestID}, dismissing Telegram poll`,
+    );
+
+    // Edit Telegram messages to show "answered externally" and remove buttons
+    const messageIds = questionManager.getMessageIds();
+    logger.debug(
+      `[Bot] External reply: messageIds=${JSON.stringify(messageIds)}, botInstance=${!!botInstance}, chatId=${chatIdInstance}`,
+    );
+    for (const messageId of messageIds) {
+      if (botInstance && chatIdInstance) {
+        botInstance.api
+          .editMessageText(chatIdInstance, messageId, t("question.answered_externally"))
+          .then(() => {
+            logger.info(
+              `[Bot] Edited question message ${messageId}: replaced with "answered externally"`,
+            );
+          })
+          .catch((err) => {
+            logger.debug(`[Bot] Failed to edit question message ${messageId}:`, err);
+          });
+      }
+    }
+
+    clearAllInteractionState("question_answered_externally");
+  });
+
+  // Handle permission answered externally (e.g., from GUI)
+  summaryAggregator.setOnPermissionExternalReply((requestID) => {
+    // If the bot itself sent this reply, ignore (not external)
+    if (lastBotPermissionReplyID === requestID) {
+      lastBotPermissionReplyID = null;
+      logger.debug(`[Bot] Ignoring permission.replied for bot's own reply: ${requestID}`);
+      return;
+    }
+
+    if (!permissionManager.isActive()) return;
+
+    logger.info(
+      `[Bot] Permission handled externally (GUI): requestID=${requestID}, dismissing Telegram buttons`,
+    );
+
+    const messageIds = permissionManager.getMessageIds();
+    for (const messageId of messageIds) {
+      if (botInstance && chatIdInstance) {
+        botInstance.api
+          .editMessageText(chatIdInstance, messageId, t("permission.answered_externally"))
+          .catch((err) => {
+            logger.debug(`[Bot] Failed to edit permission message ${messageId}:`, err);
+          });
+      }
+    }
+
+    clearAllInteractionState("permission_answered_externally");
   });
 
   summaryAggregator.setOnPermission(async (request) => {
@@ -473,6 +597,128 @@ async function ensureEventSubscription(directory: string): Promise<void> {
   }).catch((err) => {
     logger.error("Failed to subscribe to events:", err);
   });
+
+  // Start (or re-sync) the message poller for the current session.
+  // This catches assistant replies from the GUI that the SSE aggregator may miss.
+  const pollerSession = getCurrentSession();
+  if (pollerSession?.id) {
+    startPollerForSession(pollerSession.id, directory);
+  }
+}
+
+/**
+ * Start the message poller for the given session. The poller detects
+ * completed assistant replies that the SSE aggregator did not pick up
+ * (e.g. messages originating from the OpenCode GUI) and forwards them
+ * to Telegram.
+ */
+function startPollerForSession(sessionId: string, directory: string): void {
+  startMessagePolling(sessionId, directory, (polledSessionId, messageText) => {
+    if (!botInstance || !chatIdInstance) return;
+
+    const parts = formatSummary(messageText);
+    const parseMode = getAssistantParseMode();
+    const bot = botInstance;
+    const chatId = chatIdInstance;
+
+    logger.info(
+      `[MessagePoller] Forwarding polled assistant reply to Telegram (session=${polledSessionId}, parts=${parts.length})`,
+    );
+
+    safeBackgroundTask({
+      taskName: "message_poller.forward",
+      task: async () => {
+        for (let i = 0; i < parts.length; i++) {
+          const isLast = i === parts.length - 1;
+          const keyboard =
+            isLast && keyboardManager.isInitialized() ? keyboardManager.getKeyboard() : undefined;
+          const options = keyboard ? { reply_markup: keyboard } : undefined;
+
+          await sendMessageWithMarkdownFallback({
+            api: bot.api,
+            chatId,
+            text: parts[i],
+            options,
+            parseMode,
+          });
+        }
+      },
+      onError: (err) => {
+        logger.error("[MessagePoller] Failed to send polled message to Telegram:", err);
+      },
+    });
+  }).catch((err: unknown) => {
+    logger.warn("[MessagePoller] Failed to start polling:", err);
+  });
+}
+
+/**
+ * Auto-subscribe to SSE events at startup if a saved project exists.
+ * This enables GUI→Telegram forwarding without waiting for user interaction.
+ *
+ * Also sets the session in the aggregator and starts the message poller
+ * so that GUI-originated messages are detected immediately.
+ */
+export async function autoSubscribeEvents(bot: Bot<Context>): Promise<void> {
+  const currentProject = getCurrentProject();
+  if (!currentProject?.worktree) {
+    logger.debug("[Bot] No saved project — skipping auto SSE subscription");
+    return;
+  }
+
+  // In a single-user private chat, chatId equals the user ID
+  const chatId = config.telegram.allowedUserId;
+
+  botInstance = bot;
+  chatIdInstance = chatId;
+  summaryAggregator.setBotAndChatId(bot, chatId);
+
+  // Set the session in the aggregator so SSE message events are not dropped.
+  const currentSession = getCurrentSession();
+  if (currentSession?.id) {
+    summaryAggregator.setSession(currentSession.id);
+    logger.info(`[Bot] Auto-set aggregator session: ${currentSession.id}`);
+
+    // Start polling for GUI-originated messages in this session.
+    startPollerForSession(currentSession.id, currentProject.worktree);
+  }
+
+  // Start question poller to discover questions from GUI that SSE might miss.
+  startQuestionPoller(currentProject.worktree, async (questions, requestID) => {
+    if (!botInstance || !chatIdInstance) return;
+
+    // Skip if this question is already being shown
+    if (questionManager.isActive() && questionManager.getRequestID() === requestID) return;
+
+    logger.info(
+      `[Bot] Question discovered by poller: requestID=${requestID}, questions=${questions.length}`,
+    );
+
+    if (questionManager.isActive()) {
+      const previousMessageIds = questionManager.getMessageIds();
+      for (const messageId of previousMessageIds) {
+        await botInstance.api.deleteMessage(chatIdInstance, messageId).catch(() => {});
+      }
+      clearAllInteractionState("question_replaced_by_poller");
+    }
+
+    const currentSession = getCurrentSession();
+    if (currentSession) {
+      await toolMessageBatcher.flushSession(currentSession.id, "question_polled");
+    }
+
+    questionManager.startQuestions(questions, requestID);
+    await showCurrentQuestion(botInstance.api, chatIdInstance);
+  });
+
+  logger.info(`[Bot] Auto-subscribing to SSE events for project: ${currentProject.worktree}`);
+
+  try {
+    await ensureEventSubscription(currentProject.worktree);
+    logger.info("[Bot] SSE auto-subscription established");
+  } catch (err) {
+    logger.warn("[Bot] SSE auto-subscription failed (will retry on first user message):", err);
+  }
 }
 
 export function createBot(): Bot<Context> {
@@ -564,7 +810,12 @@ export function createBot(): Bot<Context> {
   bot.command("opencode_stop", opencodeStopCommand);
   bot.command("projects", projectsCommand);
   bot.command("sessions", sessionsCommand);
-  bot.command("new", newCommand);
+  bot.command("new", (ctx) => {
+    botInstance = bot;
+    chatIdInstance = ctx.chat.id;
+    summaryAggregator.setBotAndChatId(bot, ctx.chat.id);
+    return newCommand(ctx, { ensureEventSubscription });
+  });
   bot.command("abort", abortCommand);
   bot.command("rename", renameCommand);
   bot.command("commands", commandsCommand);
@@ -582,7 +833,7 @@ export function createBot(): Bot<Context> {
 
     try {
       const handledInlineCancel = await handleInlineMenuCancel(ctx);
-      const handledSession = await handleSessionSelect(ctx);
+      const handledSession = await handleSessionSelect(ctx, { ensureEventSubscription });
       const handledProject = await handleProjectSelect(ctx);
       const handledQuestion = await handleQuestionCallback(ctx);
       const handledPermission = await handlePermissionCallback(ctx);
