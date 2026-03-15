@@ -23,6 +23,7 @@ Thumbs.db
 .claude/
 .kilocode/
 .opencode/
+.sisyphus/
 
 # Project specific
 logs/
