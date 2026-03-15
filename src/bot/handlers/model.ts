@@ -9,30 +9,128 @@ import { getStoredAgent } from "../../agent/manager.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
 import { keyboardManager } from "../../keyboard/manager.js";
 import {
+  appendInlineMenuCancelButton,
   clearActiveInlineMenu,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
 } from "./inline-menu.js";
 import { t } from "../../i18n/index.js";
+import { config } from "../../config.js";
 
-function buildModelSelectionMenuText(modelLists: ModelSelectionLists): string {
-  const lines = [t("model.menu.select"), t("model.menu.favorites_title")];
+const MODEL_PAGE_CALLBACK_PREFIX = "model:page:";
 
-  if (modelLists.favorites.length === 0) {
-    lines.push(t("model.menu.favorites_empty"));
+export interface ModelListItem {
+  model: FavoriteModel;
+  isFavorite: boolean;
+}
+
+interface ModelsPaginationRange {
+  page: number;
+  totalPages: number;
+  startIndex: number;
+  endIndex: number;
+}
+
+export function parseModelPageCallback(data: string): number | null {
+  if (!data.startsWith(MODEL_PAGE_CALLBACK_PREFIX)) {
+    return null;
+  }
+  const raw = data.slice(MODEL_PAGE_CALLBACK_PREFIX.length);
+  const page = Number(raw);
+  if (!Number.isInteger(page) || page < 0) {
+    return null;
+  }
+  return page;
+}
+
+export function buildCombinedModelList(
+  favorites: FavoriteModel[],
+  recent: FavoriteModel[],
+): ModelListItem[] {
+  return [
+    ...favorites.map((model) => ({ model, isFavorite: true })),
+    ...recent.map((model) => ({ model, isFavorite: false })),
+  ];
+}
+
+export function calculateModelsPaginationRange(
+  totalModels: number,
+  page: number,
+  pageSize: number,
+): ModelsPaginationRange {
+  const safePageSize = Math.max(1, pageSize);
+  const totalPages = Math.max(1, Math.ceil(totalModels / safePageSize));
+  const normalizedPage = Math.min(Math.max(0, page), totalPages - 1);
+  const startIndex = normalizedPage * safePageSize;
+  const endIndex = Math.min(startIndex + safePageSize, totalModels);
+  return { page: normalizedPage, totalPages, startIndex, endIndex };
+}
+
+function buildModelMenuText(
+  currentModel: ModelInfo | undefined,
+  page: number,
+  totalPages: number,
+): string {
+  const baseText =
+    currentModel && currentModel.providerID && currentModel.modelID
+      ? t("model.menu.current", {
+          name: formatModelForDisplay(currentModel.providerID, currentModel.modelID),
+        })
+      : t("model.menu.select");
+
+  if (totalPages <= 1) {
+    return baseText;
   }
 
-  lines.push(t("model.menu.recent_title"));
+  return `${baseText}
 
-  if (modelLists.recent.length === 0) {
-    lines.push(t("model.menu.recent_empty"));
+${t("model.menu.page_indicator", {
+    current: String(page + 1),
+    total: String(totalPages),
+  })}`;
+}
+
+function buildModelKeyboard(
+  combined: ModelListItem[],
+  page: number,
+  currentModel: ModelInfo | undefined,
+  pageSize: number,
+): InlineKeyboard {
+  const keyboard = new InlineKeyboard();
+  const { page: normalizedPage, totalPages, startIndex, endIndex } =
+    calculateModelsPaginationRange(combined.length, page, pageSize);
+
+  combined.slice(startIndex, endIndex).forEach(({ model, isFavorite }) => {
+    const isActive =
+      currentModel &&
+      model.providerID === currentModel.providerID &&
+      model.modelID === currentModel.modelID;
+    const prefix = isFavorite ? "⭐" : "U0001f558";
+    const label = `${prefix} ${model.providerID}/${model.modelID}`;
+    const labelWithCheck = isActive ? `✅ ${label}` : label;
+    keyboard.text(labelWithCheck, `model:${model.providerID}:${model.modelID}`).row();
+  });
+
+  if (totalPages > 1) {
+    if (normalizedPage > 0) {
+      keyboard.text(
+        t("model.menu.prev_page"),
+        `${MODEL_PAGE_CALLBACK_PREFIX}${normalizedPage - 1}`,
+      );
+    }
+    if (normalizedPage < totalPages - 1) {
+      keyboard.text(
+        t("model.menu.next_page"),
+        `${MODEL_PAGE_CALLBACK_PREFIX}${normalizedPage + 1}`,
+      );
+    }
   }
 
-  return lines.join("\n");
+  return keyboard;
 }
 
 /**
- * Handle model selection callback
+ * Handle model selection callback (model select OR page navigation)
  * @param ctx grammY context
  * @returns true if handled, false otherwise
  */
@@ -50,6 +148,37 @@ export async function handleModelSelect(ctx: Context): Promise<boolean> {
 
   logger.debug(`[ModelHandler] Received callback: ${callbackQuery.data}`);
 
+  // Page navigation
+  const pageNum = parseModelPageCallback(callbackQuery.data);
+  if (pageNum !== null) {
+    try {
+      const pageSize = config.bot.modelsListLimit;
+      const currentModel = fetchCurrentModel();
+      const modelLists = await getModelSelectionLists();
+      const combined = buildCombinedModelList(modelLists.favorites, modelLists.recent);
+
+      if (combined.length === 0) {
+        await ctx.answerCallbackQuery({ text: t("model.menu.page_empty_callback") });
+        return true;
+      }
+
+      const { totalPages } = calculateModelsPaginationRange(combined.length, pageNum, pageSize);
+      const keyboard = buildModelKeyboard(combined, pageNum, currentModel, pageSize);
+      appendInlineMenuCancelButton(keyboard, "model");
+      const text = buildModelMenuText(currentModel, pageNum, totalPages);
+
+      await ctx.editMessageText(text, { reply_markup: keyboard });
+      await ctx.answerCallbackQuery();
+    } catch (err) {
+      logger.error("[ModelHandler] Error loading models page:", err);
+      await ctx
+        .answerCallbackQuery({ text: t("model.menu.page_load_error_callback") })
+        .catch(() => {});
+    }
+    return true;
+  }
+
+  // Model selection
   try {
     if (ctx.chat) {
       keyboardManager.initialize(ctx.api, ctx.chat.id);
@@ -73,16 +202,10 @@ export async function handleModelSelect(ctx: Context): Promise<boolean> {
       variant: "default", // Reset to default when switching models
     };
 
-    // Select model and persist
     selectModel(modelInfo);
-
-    // Update keyboard manager state (may not be initialized if no session selected)
     keyboardManager.updateModel(modelInfo);
-
-    // Refresh context limit for new model
     await pinnedMessageManager.refreshContextLimit();
 
-    // Update Reply Keyboard with new model and context
     const currentAgent = getStoredAgent();
     const contextInfo =
       pinnedMessageManager.getContextInfo() ??
@@ -104,16 +227,11 @@ export async function handleModelSelect(ctx: Context): Promise<boolean> {
     const displayName = formatModelForDisplay(modelInfo.providerID, modelInfo.modelID);
 
     clearActiveInlineMenu("model_selected");
-
-    // Send confirmation message with updated keyboard
     await ctx.answerCallbackQuery({ text: t("model.changed_callback", { name: displayName }) });
     await ctx.reply(t("model.changed_message", { name: displayName }), {
       reply_markup: keyboard,
     });
-
-    // Delete the inline menu message
     await ctx.deleteMessage().catch(() => {});
-
     return true;
   } catch (err) {
     clearActiveInlineMenu("model_select_error");
@@ -124,59 +242,24 @@ export async function handleModelSelect(ctx: Context): Promise<boolean> {
 }
 
 /**
- * Build inline keyboard with favorite and recent models
- * @param currentModel Current model for highlighting
- * @returns InlineKeyboard with model selection buttons
- */
-export async function buildModelSelectionMenu(
-  currentModel?: ModelInfo,
-  modelLists?: ModelSelectionLists,
-): Promise<InlineKeyboard> {
-  const keyboard = new InlineKeyboard();
-  const lists = modelLists ?? (await getModelSelectionLists());
-  const favorites = lists.favorites;
-  const recent = lists.recent;
-
-  if (favorites.length === 0 && recent.length === 0) {
-    logger.warn("[ModelHandler] No model choices found in favorites/recent");
-    return keyboard;
-  }
-
-  const addButton = (model: FavoriteModel, prefix: string): void => {
-    const isActive =
-      currentModel &&
-      model.providerID === currentModel.providerID &&
-      model.modelID === currentModel.modelID;
-
-    // Inline buttons use full model ID without truncation
-    const label = `${prefix} ${model.providerID}/${model.modelID}`;
-    const labelWithCheck = isActive ? `✅ ${label}` : label;
-
-    keyboard.text(labelWithCheck, `model:${model.providerID}:${model.modelID}`).row();
-  };
-
-  favorites.forEach((model) => addButton(model, "⭐"));
-  recent.forEach((model) => addButton(model, "🕘"));
-
-  return keyboard;
-}
-
-/**
- * Show model selection menu
+ * Show model selection menu (first page)
  * @param ctx grammY context
  */
 export async function showModelSelectionMenu(ctx: Context): Promise<void> {
   try {
+    const pageSize = config.bot.modelsListLimit;
     const currentModel = fetchCurrentModel();
     const modelLists = await getModelSelectionLists();
-    const keyboard = await buildModelSelectionMenu(currentModel, modelLists);
+    const combined = buildCombinedModelList(modelLists.favorites, modelLists.recent);
 
-    if (keyboard.inline_keyboard.length === 0) {
+    if (combined.length === 0) {
       await ctx.reply(t("model.menu.empty"));
       return;
     }
 
-    const text = buildModelSelectionMenuText(modelLists);
+    const { totalPages } = calculateModelsPaginationRange(combined.length, 0, pageSize);
+    const keyboard = buildModelKeyboard(combined, 0, currentModel, pageSize);
+    const text = buildModelMenuText(currentModel, 0, totalPages);
 
     await replyWithInlineMenu(ctx, {
       menuKind: "model",
