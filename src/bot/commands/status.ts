@@ -10,7 +10,7 @@ import { keyboardManager } from "../../keyboard/manager.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
 import { logger } from "../../utils/logger.js";
 import { t } from "../../i18n/index.js";
-import { sendBotText } from "../utils/telegram-text.js";
+import { sendMessageWithMarkdownFallback } from "../utils/send-with-markdown-fallback.js";
 
 export async function statusCommand(ctx: CommandContext<Context>) {
   try {
@@ -84,11 +84,12 @@ export async function statusCommand(ctx: CommandContext<Context>) {
     }
     const keyboard = keyboardManager.getKeyboard();
     if (ctx.chat) {
-      await sendBotText({
+      await sendMessageWithMarkdownFallback({
         api: ctx.api,
         chatId: ctx.chat.id,
         text: message,
         options: { reply_markup: keyboard },
+        parseMode: "Markdown",
       });
     } else {
       await ctx.reply(message, { reply_markup: keyboard });
