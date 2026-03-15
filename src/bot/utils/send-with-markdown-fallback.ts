@@ -88,16 +88,16 @@ export async function sendMessageWithMarkdownFallback({
   }
 }
 
-type EditMessageApi = Pick<Api<RawApi>, 'editMessageText'>;
-type TelegramEditMessageOptions = Parameters<EditMessageApi['editMessageText']>[3];
+type EditMessageApi = Pick<Api<RawApi>, "editMessageText">;
+type TelegramEditMessageOptions = Parameters<EditMessageApi["editMessageText"]>[3];
 
 interface EditMessageWithMarkdownFallbackParams {
   api: EditMessageApi;
-  chatId: Parameters<EditMessageApi['editMessageText']>[0];
-  messageId: Parameters<EditMessageApi['editMessageText']>[1];
+  chatId: Parameters<EditMessageApi["editMessageText"]>[0];
+  messageId: Parameters<EditMessageApi["editMessageText"]>[1];
   text: string;
   options?: TelegramEditMessageOptions;
-  parseMode?: 'Markdown' | 'MarkdownV2';
+  parseMode?: "Markdown" | "MarkdownV2";
 }
 
 export async function editMessageWithMarkdownFallback({
@@ -125,7 +125,7 @@ export async function editMessageWithMarkdownFallback({
       throw error;
     }
 
-    logger.warn('[Bot] Markdown parse failed on edit, retrying in raw mode', error);
+    logger.warn("[Bot] Markdown parse failed on edit, retrying in raw mode", error);
     await api.editMessageText(chatId, messageId, text, options);
   }
 }

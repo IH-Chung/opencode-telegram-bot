@@ -4,7 +4,6 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  configMock,
   providersMock,
   getCurrentModelMock,
   setCurrentModelMock,
@@ -26,14 +25,6 @@ const {
   );
 
   return {
-    configMock: {
-      opencode: {
-        model: {
-          provider: "opencode",
-          modelId: "big-pickle",
-        },
-      },
-    },
     providersMock: vi.fn(),
     getCurrentModelMock,
     setCurrentModelMock,
@@ -56,10 +47,6 @@ const {
     loggerDebugMock: vi.fn(),
   };
 });
-
-vi.mock("../../src/config.js", () => ({
-  config: configMock,
-}));
 
 vi.mock("../../src/opencode/client.js", () => ({
   opencodeClient: {
@@ -176,17 +163,21 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(3); // 2 from file + 1 default
+      expect(result.favorites).toHaveLength(2);
       expect(result.favorites).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
       expect(result.favorites).toContainEqual({
         providerID: "anthropic",
         modelID: "claude-sonnet",
       });
-      expect(result.favorites).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
 
-      expect(result.recent).toHaveLength(2);
+      // recent = all catalog models minus favorites
+      // Catalog: opencode/big-pickle, openai/gpt-4o, openai/gpt-3.5, anthropic/claude-sonnet, google/gemini-pro
+      // Favorites: openai/gpt-4o, anthropic/claude-sonnet
+      // Recent expected: opencode/big-pickle, openai/gpt-3.5, google/gemini-pro (3 items)
+      expect(result.recent).toHaveLength(3);
       expect(result.recent).toContainEqual({ providerID: "google", modelID: "gemini-pro" });
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-3.5" });
+      expect(result.recent).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
     });
 
     it("deduplicates models with same provider/model combination", async () => {
@@ -201,7 +192,7 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(3); // 2 unique from file + 1 default
+      expect(result.favorites).toHaveLength(2); // 2 unique from file
       const openaiGpt4oCount = result.favorites.filter(
         (m) => m.providerID === "openai" && m.modelID === "gpt-4o",
       ).length;
@@ -227,38 +218,20 @@ describe("model/manager", () => {
       expect(result.recent).toContainEqual({ providerID: "google", modelID: "gemini-pro" });
     });
 
-    it("falls back to config model when model.json does not exist", async () => {
+    it("returns empty favorites and catalog in recent when model.json does not exist", async () => {
       // Set XDG_STATE_HOME to a non-existent directory
       tempDir = await mkdtemp(path.join(os.tmpdir(), "opencode-model-test-"));
       process.env.XDG_STATE_HOME = path.join(tempDir, "nonexistent");
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(1);
-      expect(result.favorites[0]).toEqual({ providerID: "opencode", modelID: "big-pickle" });
-      expect(result.recent).toHaveLength(4);
+      expect(result.favorites).toHaveLength(0);
+      expect(result.recent).toHaveLength(5); // all catalog models
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-3.5" });
       expect(result.recent).toContainEqual({ providerID: "anthropic", modelID: "claude-sonnet" });
       expect(result.recent).toContainEqual({ providerID: "google", modelID: "gemini-pro" });
-    });
-
-    it("returns catalog models in recent when file does not exist and no config model", async () => {
-      tempDir = await mkdtemp(path.join(os.tmpdir(), "opencode-model-test-"));
-      process.env.XDG_STATE_HOME = path.join(tempDir, "nonexistent");
-      configMock.opencode.model.provider = "";
-      configMock.opencode.model.modelId = "";
-
-      try {
-        const result = await getModelSelectionLists();
-
-        expect(result.favorites).toHaveLength(0);
-        expect(result.recent).toHaveLength(5);
-      } finally {
-        // Restore config
-        configMock.opencode.model.provider = "opencode";
-        configMock.opencode.model.modelId = "big-pickle";
-      }
+      expect(result.recent).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
     });
 
     it("prefers USERPROFILE over HOME when both are set", async () => {
@@ -375,8 +348,8 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(2); // 1 from file + 1 default
-      expect(result.recent).toHaveLength(3);
+      expect(result.favorites).toHaveLength(1);
+      expect(result.recent).toHaveLength(4); // all catalog models minus already in favorites
     });
 
     it("handles missing favorite array gracefully", async () => {
@@ -387,8 +360,8 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(1); // just default
-      expect(result.recent).toHaveLength(4);
+      expect(result.favorites).toHaveLength(0);
+      expect(result.recent).toHaveLength(5); // all catalog models (nothing in favorites to exclude)
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
     });
 
@@ -404,9 +377,8 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(2); // 1 valid from file + 1 default
+      expect(result.favorites).toHaveLength(1); // 1 valid from file
       expect(result.favorites).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
-      expect(result.favorites).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
     });
 
     it("filters out invalid model entries with missing modelID", async () => {
@@ -421,27 +393,8 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.favorites).toHaveLength(2); // 1 valid from file + 1 default
+      expect(result.favorites).toHaveLength(1); // 1 valid from file
       expect(result.favorites).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
-    });
-
-    it("deduplicates default config model when already in favorites", async () => {
-      // configMock has opencode/big-pickle as default
-      await setupMockModelFile({
-        favorite: [
-          { providerID: "opencode", modelID: "big-pickle" }, // same as default
-          { providerID: "openai", modelID: "gpt-4o" },
-        ],
-        recent: [],
-      });
-
-      const result = await getModelSelectionLists();
-
-      expect(result.favorites).toHaveLength(2); // should not duplicate the default
-      const opencodeBigPickleCount = result.favorites.filter(
-        (m) => m.providerID === "opencode" && m.modelID === "big-pickle",
-      ).length;
-      expect(opencodeBigPickleCount).toBe(1);
     });
 
     it("deduplicates recent models", async () => {
@@ -456,7 +409,7 @@ describe("model/manager", () => {
 
       const result = await getModelSelectionLists();
 
-      expect(result.recent).toHaveLength(4);
+      expect(result.recent).toHaveLength(5); // all catalog models deduplicated
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
       expect(result.recent).toContainEqual({ providerID: "google", modelID: "gemini-pro" });
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-3.5" });
@@ -478,7 +431,7 @@ describe("model/manager", () => {
       const result = await getModelSelectionLists();
 
       expect(result.favorites).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
-      expect(result.favorites).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
+      expect(result.favorites).toHaveLength(1);
       expect(result.favorites).not.toContainEqual({
         providerID: "openai",
         modelID: "missing-favorite",
@@ -487,7 +440,6 @@ describe("model/manager", () => {
       expect(result.recent).toContainEqual({ providerID: "google", modelID: "gemini-pro" });
       expect(result.recent).toContainEqual({ providerID: "openai", modelID: "gpt-3.5" });
       expect(result.recent).toContainEqual({ providerID: "anthropic", modelID: "claude-sonnet" });
-      expect(result.recent).toHaveLength(3);
       expect(result.recent).not.toContainEqual({
         providerID: "google",
         modelID: "missing-recent",
@@ -543,23 +495,22 @@ describe("model/manager", () => {
 
       const favorites = await getFavoriteModels();
 
-      expect(favorites).toHaveLength(2); // 1 from file + 1 default
+      expect(favorites).toHaveLength(1); // just from file
       expect(favorites).toContainEqual({ providerID: "openai", modelID: "gpt-4o" });
-      expect(favorites).toContainEqual({ providerID: "opencode", modelID: "big-pickle" });
       // recent models should not be in favorites
       expect(favorites).not.toContainEqual({ providerID: "google", modelID: "gemini-pro" });
     });
   });
 
   describe("reconcileStoredModelSelection", () => {
-    it("falls back to env default when stored model is unavailable", async () => {
+    it("clears stored model when it is unavailable", async () => {
       setCurrentModelState({ providerID: "openai", modelID: "retired", variant: "high" });
 
       await reconcileStoredModelSelection();
 
       expect(getCurrentModelState()).toEqual({
-        providerID: "opencode",
-        modelID: "big-pickle",
+        providerID: "",
+        modelID: "",
         variant: "default",
       });
       expect(setCurrentModelMock).toHaveBeenCalledTimes(1);

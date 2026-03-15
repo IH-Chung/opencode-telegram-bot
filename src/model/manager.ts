@@ -1,5 +1,4 @@
 import { getCurrentModel, setCurrentModel } from "../settings/manager.js";
-import { config } from "../config.js";
 import { opencodeClient } from "../opencode/client.js";
 import { logger } from "../utils/logger.js";
 import type { ModelInfo, FavoriteModel, ModelSelectionLists } from "./types.js";
@@ -23,17 +22,6 @@ let modelCatalogFetchInFlight: Promise<ModelCatalogData | null> | null = null;
 
 function getModelKey(providerID: string, modelID: string): string {
   return `${providerID}/${modelID}`;
-}
-
-function getEnvDefaultModel(): FavoriteModel | null {
-  const providerID = config.opencode.model.provider;
-  const modelID = config.opencode.model.modelId;
-
-  if (!providerID || !modelID) {
-    return null;
-  }
-
-  return { providerID, modelID };
 }
 
 function dedupeModels(models: FavoriteModel[]): FavoriteModel[] {
@@ -207,10 +195,8 @@ function getOpenCodeModelStatePaths(): string[] {
 
 /**
  * Get favorite and recent models from OpenCode local state file.
- * Config model is always treated as favorite.
  */
 export async function getModelSelectionLists(): Promise<ModelSelectionLists> {
-  const envDefaultModel = getEnvDefaultModel();
   const modelCatalogData = await getModelCatalogData();
   const validModelKeys = modelCatalogData?.validModelKeys ?? null;
   const allCatalogModels = modelCatalogData?.allModels ?? [];
@@ -245,18 +231,12 @@ export async function getModelSelectionLists(): Promise<ModelSelectionLists> {
     const validatedFavorites = filterModelsByCatalog(rawFavorites, validModelKeys);
     const validatedRecent = filterModelsByCatalog(rawRecent, validModelKeys);
 
-    const favorites = envDefaultModel
-      ? dedupeModels([...validatedFavorites, envDefaultModel])
-      : validatedFavorites;
-
-    if (rawFavorites.length === 0 && envDefaultModel) {
-      logger.info(
-        `[ModelManager] No favorites in ${stateFilePath}, using config model as favorite`,
-      );
-    }
+    const favorites = dedupeModels(validatedFavorites);
 
     if (favorites.length === 0) {
-      logger.warn(`[ModelManager] No favorites in ${stateFilePath}`);
+      logger.info(
+        `[ModelManager] No favorites in ${stateFilePath}. Add favorites in OpenCode TUI (Ctrl+F on a model).`,
+      );
     }
 
     const filteredOutFavorites = rawFavorites.length - validatedFavorites.length;
@@ -269,7 +249,7 @@ export async function getModelSelectionLists(): Promise<ModelSelectionLists> {
     }
 
     const favoriteKeys = new Set(
-      favorites.map((model) => getModelKey(model.providerID, model.modelID)),
+      validatedFavorites.map((model) => getModelKey(model.providerID, model.modelID)),
     );
     const recent = dedupeModels([...validatedRecent, ...allCatalogModels]).filter(
       (model) => !favoriteKeys.has(getModelKey(model.providerID, model.modelID)),
@@ -281,24 +261,6 @@ export async function getModelSelectionLists(): Promise<ModelSelectionLists> {
 
     return { favorites, recent };
   } catch (err) {
-    if (envDefaultModel) {
-      const favoriteKeys = new Set([
-        getModelKey(envDefaultModel.providerID, envDefaultModel.modelID),
-      ]);
-      const recent = dedupeModels(allCatalogModels).filter(
-        (model) => !favoriteKeys.has(getModelKey(model.providerID, model.modelID)),
-      );
-
-      logger.warn(
-        "[ModelManager] Failed to load OpenCode model state, using config model as favorite:",
-        err,
-      );
-      return {
-        favorites: [envDefaultModel],
-        recent,
-      };
-    }
-
     logger.error("[ModelManager] Failed to load OpenCode model state:", err);
     const recent = dedupeModels(allCatalogModels);
     return {
@@ -310,7 +272,7 @@ export async function getModelSelectionLists(): Promise<ModelSelectionLists> {
 
 /**
  * Validate stored selected model against OpenCode providers catalog.
- * If selected model is unavailable, fallback to env default model.
+ * If selected model is unavailable, clear the stored selection.
  */
 export async function reconcileStoredModelSelection(): Promise<void> {
   const currentModel = getCurrentModel();
@@ -332,22 +294,13 @@ export async function reconcileStoredModelSelection(): Promise<void> {
     return;
   }
 
-  const envDefaultModel = getEnvDefaultModel();
-  if (!envDefaultModel) {
-    logger.warn(
-      `[ModelManager] Stored model ${currentModelKey} is unavailable and env default model is missing`,
-    );
-    return;
-  }
-
-  const fallbackKey = getModelKey(envDefaultModel.providerID, envDefaultModel.modelID);
   logger.warn(
-    `[ModelManager] Stored model ${currentModelKey} is unavailable, falling back to ${fallbackKey}`,
+    `[ModelManager] Stored model ${currentModelKey} is no longer available, clearing stored selection`,
   );
 
   setCurrentModel({
-    providerID: envDefaultModel.providerID,
-    modelID: envDefaultModel.modelID,
+    providerID: "",
+    modelID: "",
     variant: "default",
   });
 }
@@ -359,8 +312,7 @@ export function __resetModelCatalogCacheForTests(): void {
 }
 
 /**
- * Get list of favorite models from OpenCode local state file
- * Falls back to env default model if file is unavailable or empty
+ * Get list of favorite models from OpenCode local state file.
  */
 export async function getFavoriteModels(): Promise<FavoriteModel[]> {
   const { favorites } = await getModelSelectionLists();
@@ -368,7 +320,7 @@ export async function getFavoriteModels(): Promise<FavoriteModel[]> {
 }
 
 /**
- * Get current model from settings or fallback to config
+ * Get current model from settings.
  * @returns Current model info
  */
 export function fetchCurrentModel(): ModelInfo {
@@ -376,7 +328,7 @@ export function fetchCurrentModel(): ModelInfo {
 }
 
 /**
- * Select model and persist to settings
+ * Select model and persist to settings.
  * @param modelInfo Model to select
  */
 export function selectModel(modelInfo: ModelInfo): void {
@@ -385,9 +337,9 @@ export function selectModel(modelInfo: ModelInfo): void {
 }
 
 /**
- * Get stored model from settings (synchronous)
- * ALWAYS returns a model - fallback to config if not found
- * @returns Current model info
+ * Get stored model from settings (synchronous).
+ * Returns empty model if nothing stored - caller should handle appropriately.
+ * @returns Current model info (may have empty providerID/modelID if not set)
  */
 export function getStoredModel(): ModelInfo {
   const storedModel = getCurrentModel();
@@ -400,18 +352,8 @@ export function getStoredModel(): ModelInfo {
     return storedModel;
   }
 
-  // Fallback to model from config (environment variables)
-  if (config.opencode.model.provider && config.opencode.model.modelId) {
-    logger.debug("[ModelManager] Using model from config");
-    return {
-      providerID: config.opencode.model.provider,
-      modelID: config.opencode.model.modelId,
-      variant: "default",
-    };
-  }
-
-  // This should not happen if config is properly set
-  logger.warn("[ModelManager] No model found in settings or config, returning empty model");
+  // No model stored - user should select one from picker or OpenCode will use agent default
+  logger.debug("[ModelManager] No model stored, returning empty model");
   return {
     providerID: "",
     modelID: "",

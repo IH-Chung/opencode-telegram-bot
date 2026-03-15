@@ -273,7 +273,7 @@ src/
   runtime/
     mode.ts                 — Runtime mode resolver (sources vs installed), --mode CLI flag parsing
     paths.ts                — Platform-aware path resolver (appHome, .env, settings.json, logs, run dirs)
-    bootstrap.ts            — Interactive setup wizard (locale, token, user ID, API URL, credentials, model)
+    bootstrap.ts            — Interactive setup wizard (locale, token, user ID, API URL, credentials)
 
   i18n/
     index.ts                — Locale registry, t() translation function, interpolation, locale resolution
@@ -650,7 +650,7 @@ Follow [docs/LOCALIZATION_GUIDE.md](./docs/LOCALIZATION_GUIDE.md):
 
 `tests/setup.ts` runs before every test:
 
-- `ensureTestEnvironment()` — sets required env vars (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USER_ID`, model config).
+- `ensureTestEnvironment()` — sets required env vars (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_ALLOWED_USER_ID`).
 - `resetSingletonState()` — resets all singleton managers to fresh state.
 - `afterEach` — restores mocks, unstubs envs/globals, uses real timers.
 
@@ -677,8 +677,6 @@ npm run build         # TypeScript compilation
 | `OPENCODE_API_URL`              |    No    | `http://localhost:4096`  | OpenCode server URL                  |
 | `OPENCODE_SERVER_USERNAME`      |    No    | `opencode`               | Server auth username                 |
 | `OPENCODE_SERVER_PASSWORD`      |    No    | —                        | Server auth password                 |
-| `OPENCODE_MODEL_PROVIDER`       |   Yes    | —                        | Default model provider               |
-| `OPENCODE_MODEL_ID`             |   Yes    | —                        | Default model ID                     |
 | `BOT_LOCALE`                    |    No    | `en`                     | Bot UI language (en/de/es/ru/zh)     |
 | `SESSIONS_LIST_LIMIT`           |    No    | `10`                     | Sessions per page                    |
 | `PROJECTS_LIST_LIMIT`           |    No    | `10`                     | Projects per page                    |

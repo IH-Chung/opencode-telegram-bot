@@ -103,10 +103,6 @@ export const config = {
     apiUrl: getEnvVar("OPENCODE_API_URL", false) || "http://localhost:4096",
     username: getEnvVar("OPENCODE_SERVER_USERNAME", false) || "opencode",
     password: getEnvVar("OPENCODE_SERVER_PASSWORD", false),
-    model: {
-      provider: getEnvVar("OPENCODE_MODEL_PROVIDER", true), // Required
-      modelId: getEnvVar("OPENCODE_MODEL_ID", true), // Required
-    },
   },
   server: {
     logLevel: getEnvVar("LOG_LEVEL", false) || "info",

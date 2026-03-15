@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import readline from "node:readline";
 import { createInterface } from "node:readline/promises";
-import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { getRuntimePaths, type RuntimePaths } from "./paths.js";
 import {
@@ -16,13 +15,6 @@ import {
 
 const DEFAULT_API_URL = "http://localhost:4096";
 const DEFAULT_SERVER_USERNAME = "opencode";
-const FALLBACK_MODEL_PROVIDER = "opencode";
-const FALLBACK_MODEL_ID = "big-pickle";
-
-interface ModelDefaults {
-  provider: string;
-  modelId: string;
-}
 
 interface EnvValidationResult {
   isValid: boolean;
@@ -45,8 +37,6 @@ export interface WizardEnvValues {
   OPENCODE_API_URL?: string;
   OPENCODE_SERVER_USERNAME: string;
   OPENCODE_SERVER_PASSWORD?: string;
-  OPENCODE_MODEL_PROVIDER: string;
-  OPENCODE_MODEL_ID: string;
 }
 
 function isPositiveInteger(value: string): boolean {
@@ -69,14 +59,6 @@ export function validateRuntimeEnvValues(values: Record<string, string>): EnvVal
 
   if (!isPositiveInteger(values.TELEGRAM_ALLOWED_USER_ID || "")) {
     return { isValid: false, reason: "Invalid TELEGRAM_ALLOWED_USER_ID" };
-  }
-
-  if (!values.OPENCODE_MODEL_PROVIDER || values.OPENCODE_MODEL_PROVIDER.trim().length === 0) {
-    return { isValid: false, reason: "Missing OPENCODE_MODEL_PROVIDER" };
-  }
-
-  if (!values.OPENCODE_MODEL_ID || values.OPENCODE_MODEL_ID.trim().length === 0) {
-    return { isValid: false, reason: "Missing OPENCODE_MODEL_ID" };
   }
 
   const apiUrl = values.OPENCODE_API_URL?.trim();
@@ -120,8 +102,6 @@ export function buildEnvFileContent(existingContent: string, values: WizardEnvVa
     ["OPENCODE_API_URL", values.OPENCODE_API_URL],
     ["OPENCODE_SERVER_USERNAME", values.OPENCODE_SERVER_USERNAME],
     ["OPENCODE_SERVER_PASSWORD", values.OPENCODE_SERVER_PASSWORD],
-    ["OPENCODE_MODEL_PROVIDER", values.OPENCODE_MODEL_PROVIDER],
-    ["OPENCODE_MODEL_ID", values.OPENCODE_MODEL_ID],
   ];
 
   for (const [key, value] of orderedUpdates) {
@@ -167,37 +147,6 @@ async function ensureSettingsFile(settingsFilePath: string): Promise<void> {
 
   await fs.mkdir(path.dirname(settingsFilePath), { recursive: true });
   await fs.writeFile(settingsFilePath, "{}\n", "utf-8");
-}
-
-function getEnvExamplePath(): string {
-  const currentFilePath = fileURLToPath(import.meta.url);
-  return path.resolve(path.dirname(currentFilePath), "..", "..", ".env.example");
-}
-
-async function loadModelDefaultsFromEnvExample(): Promise<ModelDefaults> {
-  const fallbackDefaults: ModelDefaults = {
-    provider: FALLBACK_MODEL_PROVIDER,
-    modelId: FALLBACK_MODEL_ID,
-  };
-
-  try {
-    const content = await fs.readFile(getEnvExamplePath(), "utf-8");
-    const parsed = dotenv.parse(content);
-
-    const provider = parsed.OPENCODE_MODEL_PROVIDER?.trim();
-    const modelId = parsed.OPENCODE_MODEL_ID?.trim();
-
-    if (!provider || !modelId) {
-      return fallbackDefaults;
-    }
-
-    return {
-      provider,
-      modelId,
-    };
-  } catch {
-    return fallbackDefaults;
-  }
 }
 
 async function askVisible(question: string): Promise<string> {
@@ -422,15 +371,10 @@ async function validateExistingEnv(envFilePath: string): Promise<EnvValidationRe
 async function runWizardAndPersist(runtimePaths: RuntimePaths): Promise<void> {
   ensureInteractiveTty();
 
-  const [existingContent, modelDefaults, wizardValues] = await Promise.all([
+  const [existingContent, wizardValues] = await Promise.all([
     readEnvFileIfExists(runtimePaths.envFilePath),
-    loadModelDefaultsFromEnvExample(),
     collectWizardValues(),
   ]);
-
-  const existingParsed = existingContent ? dotenv.parse(existingContent) : {};
-  const provider = existingParsed.OPENCODE_MODEL_PROVIDER || modelDefaults.provider;
-  const modelId = existingParsed.OPENCODE_MODEL_ID || modelDefaults.modelId;
 
   const envValues: WizardEnvValues = {
     BOT_LOCALE: wizardValues.locale,
@@ -439,8 +383,6 @@ async function runWizardAndPersist(runtimePaths: RuntimePaths): Promise<void> {
     OPENCODE_API_URL: wizardValues.apiUrl,
     OPENCODE_SERVER_USERNAME: wizardValues.serverUsername,
     OPENCODE_SERVER_PASSWORD: wizardValues.serverPassword,
-    OPENCODE_MODEL_PROVIDER: provider,
-    OPENCODE_MODEL_ID: modelId,
   };
 
   const envContent = buildEnvFileContent(existingContent ?? "", envValues);
