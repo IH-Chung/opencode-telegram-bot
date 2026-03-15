@@ -1,9 +1,9 @@
 # OpenCode Telegram Bot
 
-[![npm version](https://img.shields.io/npm/v/@grinev/opencode-telegram-bot)](https://www.npmjs.com/package/@grinev/opencode-telegram-bot)
-[![CI](https://github.com/grinev/opencode-telegram-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/grinev/opencode-telegram-bot/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org)
+
+> **This project is a fork of [grinev/opencode-telegram-bot](https://github.com/grinev/opencode-telegram-bot) by [Ruslan Grinev](https://github.com/grinev). Full credit and respect to the original author.**
 
 OpenCode Telegram Bot is a secure Telegram client for [OpenCode](https://opencode.ai) CLI that runs on your local machine.
 
@@ -43,7 +43,7 @@ Planned features currently in development are listed in [Current Task List](PROD
 - **OpenCode** — install from [opencode.ai](https://opencode.ai) or [GitHub](https://github.com/sst/opencode)
 - **Telegram Bot** — you'll create one during setup (takes 1 minute)
 
-## Quick Start
+## Installation
 
 ### 1. Create a Telegram Bot
 
@@ -63,30 +63,16 @@ opencode serve
 
 > The bot connects to the OpenCode API at `http://localhost:4096` by default.
 
-### 3. Install & Run
-
-The fastest way — run directly with `npx`:
+### 3. Clone & Run
 
 ```bash
-npx @grinev/opencode-telegram-bot
+git clone https://github.com/IH-Chung/opencode-telegram-bot.git
+cd opencode-telegram-bot
+npm install
+npm run dev
 ```
 
-> Quick start is for npm usage. You do not need to clone this repository. If you run this command from the source directory (repository root), it may fail with `opencode-telegram: not found`. To run from sources, use the [Development](#development) section.
-
-On first launch, an interactive wizard will guide you through the configuration — it asks for interface language first, then your bot token, user ID, OpenCode API URL, and optional OpenCode server credentials (username/password). After that, you're ready to go. Open your bot in Telegram and start sending tasks.
-
-#### Alternative: Global Install
-
-```bash
-npm install -g @grinev/opencode-telegram-bot
-opencode-telegram start
-```
-
-To reconfigure at any time:
-
-```bash
-opencode-telegram config
-```
+On first launch, an interactive wizard will guide you through the configuration — it asks for interface language first, then your bot token, user ID, OpenCode API URL, and optional OpenCode server credentials. The `.env` file is saved to the project root. After that, you're ready to go. Open your bot in Telegram and start sending tasks.
 
 ## Supported Platforms
 
@@ -125,11 +111,12 @@ Any regular text message is sent as a prompt to the coding agent only when no bl
 
 ### Environment Variables
 
-When installed via npm, the configuration wizard handles the initial setup. The `.env` file is stored in your platform's app data directory:
+The `.env` file location depends on how you run the bot:
 
-- **macOS:** `~/Library/Application Support/opencode-telegram-bot/.env`
-- **Windows:** `%APPDATA%\opencode-telegram-bot\.env`
-- **Linux:** `~/.config/opencode-telegram-bot/.env`
+- **From source (git clone):** project root directory (created automatically by the setup wizard on first launch)
+- **macOS (installed):** `~/Library/Application Support/opencode-telegram-bot/.env`
+- **Windows (installed):** `%APPDATA%\opencode-telegram-bot\.env`
+- **Linux (installed):** `~/.config/opencode-telegram-bot/.env`
 
 | Variable                        | Description                                                                                                  | Required | Default                  |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------ | :------: | ------------------------ |
@@ -206,11 +193,6 @@ Since the bot runs locally on your machine and connects to your local OpenCode s
 git clone https://github.com/IH-Chung/opencode-telegram-bot.git
 cd opencode-telegram-bot
 npm install
-```
-
-Build and run:
-
-```bash
 npm run dev
 ```
 
@@ -220,7 +202,7 @@ npm run dev
 
 | Script                          | Description                          |
 | ------------------------------- | ------------------------------------ |
-| `npm run dev`                   | Build and start (development)        |
+| `npm run dev`                   | Build and start                      |
 | `npm run dev:watch`             | Run with auto-restart on file change |
 | `npm run build`                 | Compile TypeScript                   |
 | `npm start`                     | Run compiled code                    |
@@ -230,7 +212,7 @@ npm run dev
 | `npm test`                      | Run tests (Vitest)                   |
 | `npm run test:coverage`         | Tests with coverage report           |
 
-> **Note:** No file watcher or auto-restart is used. The bot maintains persistent SSE and long-polling connections — automatic restarts would break them mid-task. After making changes, restart manually with `npm run dev`.
+> **Note:** `dev:watch` auto-restarts on file save and is recommended during development. For production or long-running sessions, use `npm run dev` (build then start) to avoid connection interruptions.
 
 ## Troubleshooting
 
@@ -260,8 +242,20 @@ Please follow commit and release note conventions in [CONTRIBUTING.md](CONTRIBUT
 
 ## Community
 
-Have questions, want to share your experience using the bot, or have an idea for a feature? Join the conversation in [GitHub Discussions](https://github.com/grinev/opencode-telegram-bot/discussions).
+Have questions, want to share your experience, or have a feature idea? Join the conversation in [GitHub Discussions](https://github.com/IH-Chung/opencode-telegram-bot/discussions).
+
+## Based On
+
+This project is a fork of **[grinev/opencode-telegram-bot](https://github.com/grinev/opencode-telegram-bot)**, originally created by [Ruslan Grinev](https://github.com/grinev).
+
+The original project remains the upstream source and deserves full credit for the architecture, core features, and overall design of this bot. This fork adds changes on top of that foundation.
+
+If you are looking for the original, actively maintained upstream project, visit:
+👉 https://github.com/grinev/opencode-telegram-bot
 
 ## License
 
-[MIT](LICENSE) © Ruslan Grinev
+[MIT](LICENSE)
+
+Original work © [Ruslan Grinev](https://github.com/grinev)  
+Fork modifications © IH-Chung
