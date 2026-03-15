@@ -458,10 +458,6 @@ async function runWizardAndPersist(runtimePaths: RuntimePaths): Promise<void> {
 export async function ensureRuntimeConfigForStart(): Promise<void> {
   const runtimePaths = getRuntimePaths();
 
-  if (runtimePaths.mode !== "installed") {
-    return;
-  }
-
   const validationResult = await validateExistingEnv(runtimePaths.envFilePath);
   if (validationResult.isValid) {
     await ensureSettingsFile(runtimePaths.settingsFilePath);

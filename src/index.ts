@@ -17,6 +17,9 @@ async function main(): Promise<void> {
 
   setRuntimeMode(modeResult.mode);
 
+  const { ensureRuntimeConfigForStart } = await import("./runtime/bootstrap.js");
+  await ensureRuntimeConfigForStart();
+
   const { startBotApp } = await import("./app/start-bot-app.js");
   await startBotApp();
 }
