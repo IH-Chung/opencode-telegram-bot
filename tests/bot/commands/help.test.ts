@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { Context } from "grammy";
-import { helpCommand } from "../../../src/bot/commands/help.js";
-import { getLocalizedBotCommands } from "../../../src/bot/commands/definitions.js";
+import { helpCommand } from "../../../src/platform/telegram/commands/help.js";
+import { getLocalizedBotCommands } from "../../../src/platform/telegram/commands/definitions.js";
 
 describe("bot/commands/help", () => {
   it("returns full commands list from centralized definitions", async () => {

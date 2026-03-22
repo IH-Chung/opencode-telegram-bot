@@ -4,7 +4,7 @@ import {
   renameCommand,
   handleRenameCancel,
   handleRenameTextAnswer,
-} from "../../../src/bot/commands/rename.js";
+} from "../../../src/platform/telegram/commands/rename.js";
 import { renameManager } from "../../../src/rename/manager.js";
 import { interactionManager } from "../../../src/interaction/manager.js";
 import { t } from "../../../src/i18n/index.js";

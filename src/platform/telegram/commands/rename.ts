@@ -1,12 +1,12 @@
 import { CommandContext, Context, InlineKeyboard } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { getCurrentSession, setCurrentSession } from "../../session/manager.js";
-import { renameManager } from "../../rename/manager.js";
-import { interactionManager } from "../../interaction/manager.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { toMessageRef, fromMessageRef } from "../../platform/telegram/adapter.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { getCurrentSession, setCurrentSession } from "../../../session/manager.js";
+import { renameManager } from "../../../rename/manager.js";
+import { interactionManager } from "../../../interaction/manager.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { toMessageRef, fromMessageRef } from "../adapter.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 function getCallbackMessageId(ctx: Context): string | null {
   const message = ctx.callbackQuery?.message;

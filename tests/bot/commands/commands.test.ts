@@ -5,7 +5,7 @@ import {
   handleCommandTextArguments,
   handleCommandsCallback,
   type ExecuteCommandDeps,
-} from "../../../src/bot/commands/commands.js";
+} from "../../../src/platform/telegram/commands/commands.js";
 import { interactionManager } from "../../../src/interaction/manager.js";
 import { t } from "../../../src/i18n/index.js";
 

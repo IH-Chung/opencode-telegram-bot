@@ -4,7 +4,7 @@ import {
   buildProjectButtonLabel,
   getProjectFolderName,
   parseProjectPageCallback,
-} from "../../../src/bot/commands/projects.js";
+} from "../../../src/platform/telegram/commands/projects.js";
 
 describe("bot/commands/projects", () => {
   describe("getProjectFolderName", () => {

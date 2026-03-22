@@ -1,5 +1,5 @@
-import type { I18nKey } from "../../i18n/en.js";
-import { t } from "../../i18n/index.js";
+import type { I18nKey } from "../../../i18n/en.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Centralized bot commands definitions

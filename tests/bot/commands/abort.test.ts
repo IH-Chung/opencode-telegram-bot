@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Context } from "grammy";
-import { abortCommand, abortCurrentOperation } from "../../../src/bot/commands/abort.js";
+import { abortCommand, abortCurrentOperation } from "../../../src/platform/telegram/commands/abort.js";
 import { clearAllInteractionState } from "../../../src/interaction/cleanup.js";
 import { questionManager } from "../../../src/question/manager.js";
 import { permissionManager } from "../../../src/permission/manager.js";

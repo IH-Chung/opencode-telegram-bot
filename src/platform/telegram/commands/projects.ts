@@ -1,26 +1,26 @@
 import { CommandContext, Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { setCurrentProject, getCurrentProject } from "../../settings/manager.js";
-import { getProjects } from "../../project/manager.js";
-import { syncSessionDirectoryCache } from "../../session/cache-manager.js";
-import { clearSession } from "../../session/manager.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
-import { getStoredAgent } from "../../agent/manager.js";
-import { getStoredModel } from "../../model/manager.js";
-import { formatVariantForButton } from "../../variant/manager.js";
-import { clearAllInteractionState } from "../../interaction/cleanup.js";
-import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
+import { setCurrentProject, getCurrentProject } from "../../../settings/manager.js";
+import { getProjects } from "../../../project/manager.js";
+import { syncSessionDirectoryCache } from "../../../session/cache-manager.js";
+import { clearSession } from "../../../session/manager.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { keyboardManager } from "../keyboard-manager.js";
+import { getStoredAgent } from "../../../agent/manager.js";
+import { getStoredModel } from "../../../model/manager.js";
+import { formatVariantForButton } from "../../../variant/manager.js";
+import { clearAllInteractionState } from "../../../interaction/cleanup.js";
+import { createMainKeyboard } from "../utils/keyboard.js";
 import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
-} from "../../platform/telegram/handlers/inline-menu.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
-import { config } from "../../config.js";
-import { ProjectInfo } from "../../settings/manager.js";
+} from "../handlers/inline-menu.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
+import { config } from "../../../config.js";
+import { ProjectInfo } from "../../../settings/manager.js";
 
 const MAX_INLINE_BUTTON_LABEL_LENGTH = 64;
 const PROJECT_PAGE_CALLBACK_PREFIX = "projects:page:";

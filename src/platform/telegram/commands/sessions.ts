@@ -1,24 +1,24 @@
 import { CommandContext, Context } from "grammy";
 import { InlineKeyboard } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { setCurrentSession, SessionInfo } from "../../session/manager.js";
-import { getCurrentProject } from "../../settings/manager.js";
-import { clearAllInteractionState } from "../../interaction/cleanup.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
-import { selectAgent, fetchSessionAgentAndModel } from "../../agent/manager.js";
-import { selectModel } from "../../model/manager.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { setCurrentSession, SessionInfo } from "../../../session/manager.js";
+import { getCurrentProject } from "../../../settings/manager.js";
+import { clearAllInteractionState } from "../../../interaction/cleanup.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { keyboardManager } from "../keyboard-manager.js";
+import { selectAgent, fetchSessionAgentAndModel } from "../../../agent/manager.js";
+import { selectModel } from "../../../model/manager.js";
 import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
-} from "../../platform/telegram/handlers/inline-menu.js";
-import { logger } from "../../utils/logger.js";
-import { safeBackgroundTask } from "../../utils/safe-background-task.js";
-import { config } from "../../config.js";
-import { getDateLocale, t } from "../../i18n/index.js";
-import { TELEGRAM_MESSAGE_LIMIT } from "../../platform/telegram/formatter.js";
+} from "../handlers/inline-menu.js";
+import { logger } from "../../../utils/logger.js";
+import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
+import { config } from "../../../config.js";
+import { getDateLocale, t } from "../../../i18n/index.js";
+import { TELEGRAM_MESSAGE_LIMIT } from "../formatter.js";
 
 const SESSION_CALLBACK_PREFIX = "session:";
 const SESSION_PAGE_CALLBACK_PREFIX = "session:page:";

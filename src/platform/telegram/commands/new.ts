@@ -1,19 +1,19 @@
 import { CommandContext, Context } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { setCurrentSession, SessionInfo } from "../../session/manager.js";
-import { ingestSessionInfoForCache } from "../../session/cache-manager.js";
-import { getCurrentProject } from "../../settings/manager.js";
-import { clearAllInteractionState } from "../../interaction/cleanup.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
-import { getStoredAgent, getAgentDefaultModel } from "../../agent/manager.js";
-import { getStoredModel, selectModel } from "../../model/manager.js";
-import { formatVariantForButton } from "../../variant/manager.js";
-import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
-import { safeBackgroundTask } from "../../utils/safe-background-task.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { setCurrentSession, SessionInfo } from "../../../session/manager.js";
+import { ingestSessionInfoForCache } from "../../../session/cache-manager.js";
+import { getCurrentProject } from "../../../settings/manager.js";
+import { clearAllInteractionState } from "../../../interaction/cleanup.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { keyboardManager } from "../keyboard-manager.js";
+import { getStoredAgent, getAgentDefaultModel } from "../../../agent/manager.js";
+import { getStoredModel, selectModel } from "../../../model/manager.js";
+import { formatVariantForButton } from "../../../variant/manager.js";
+import { createMainKeyboard } from "../utils/keyboard.js";
+import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 export interface NewCommandDeps {
   ensureEventSubscription: (directory: string) => Promise<void>;

@@ -8,28 +8,28 @@ import { config } from "../config.js";
 import { authMiddleware } from "../platform/telegram/middleware/auth.js";
 import { interactionGuardMiddleware } from "../platform/telegram/middleware/interaction-guard.js";
 import { unknownCommandMiddleware } from "../platform/telegram/middleware/unknown-command.js";
-import { BOT_COMMANDS } from "./commands/definitions.js";
-import { startCommand } from "./commands/start.js";
-import { helpCommand } from "./commands/help.js";
-import { statusCommand } from "./commands/status.js";
+import { BOT_COMMANDS } from "../platform/telegram/commands/definitions.js";
+import { startCommand } from "../platform/telegram/commands/start.js";
+import { helpCommand } from "../platform/telegram/commands/help.js";
+import { statusCommand } from "../platform/telegram/commands/status.js";
 import {
   AGENT_MODE_BUTTON_TEXT_PATTERN,
   MODEL_BUTTON_TEXT_PATTERN,
   VARIANT_BUTTON_TEXT_PATTERN,
 } from "./message-patterns.js";
-import { sessionsCommand, handleSessionSelect } from "./commands/sessions.js";
-import { newCommand } from "./commands/new.js";
-import { projectsCommand, handleProjectSelect } from "./commands/projects.js";
-import { abortCommand } from "./commands/abort.js";
-import { opencodeStartCommand } from "./commands/opencode-start.js";
-import { opencodeStopCommand } from "./commands/opencode-stop.js";
-import { renameCommand, handleRenameCancel, handleRenameTextAnswer } from "./commands/rename.js";
+import { sessionsCommand, handleSessionSelect } from "../platform/telegram/commands/sessions.js";
+import { newCommand } from "../platform/telegram/commands/new.js";
+import { projectsCommand, handleProjectSelect } from "../platform/telegram/commands/projects.js";
+import { abortCommand } from "../platform/telegram/commands/abort.js";
+import { opencodeStartCommand } from "../platform/telegram/commands/opencode-start.js";
+import { opencodeStopCommand } from "../platform/telegram/commands/opencode-stop.js";
+import { renameCommand, handleRenameCancel, handleRenameTextAnswer } from "../platform/telegram/commands/rename.js";
 import {
   commandsCommand,
   handleCommandsCallback,
   handleCommandTextArguments,
-} from "./commands/commands.js";
-import { skillsCommand } from "./commands/skills.js";
+} from "../platform/telegram/commands/commands.js";
+import { skillsCommand } from "../platform/telegram/commands/skills.js";
 import {
   handleQuestionCallback,
   showCurrentQuestion,

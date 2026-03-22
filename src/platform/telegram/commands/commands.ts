@@ -1,21 +1,21 @@
 import { Bot, CommandContext, Context, InlineKeyboard } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { getCurrentProject } from "../../settings/manager.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { getCurrentProject } from "../../../settings/manager.js";
 import {
   clearSession,
   getCurrentSession,
   setCurrentSession,
   type SessionInfo,
-} from "../../session/manager.js";
-import { ingestSessionInfoForCache } from "../../session/cache-manager.js";
-import { interactionManager } from "../../interaction/manager.js";
-import type { InteractionState } from "../../interaction/types.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { getStoredAgent } from "../../agent/manager.js";
-import { getStoredModel } from "../../model/manager.js";
-import { safeBackgroundTask } from "../../utils/safe-background-task.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+} from "../../../session/manager.js";
+import { ingestSessionInfoForCache } from "../../../session/cache-manager.js";
+import { interactionManager } from "../../../interaction/manager.js";
+import type { InteractionState } from "../../../interaction/types.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { getStoredAgent } from "../../../agent/manager.js";
+import { getStoredModel } from "../../../model/manager.js";
+import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 const COMMANDS_CALLBACK_PREFIX = "commands:";
 const COMMANDS_CALLBACK_SELECT_PREFIX = `${COMMANDS_CALLBACK_PREFIX}select:`;

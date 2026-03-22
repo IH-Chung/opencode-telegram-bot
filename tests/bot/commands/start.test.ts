@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Context } from "grammy";
-import { startCommand } from "../../../src/bot/commands/start.js";
+import { startCommand } from "../../../src/platform/telegram/commands/start.js";
 import { t } from "../../../src/i18n/index.js";
 
 const mocked = vi.hoisted(() => ({
@@ -28,7 +28,7 @@ const mocked = vi.hoisted(() => ({
   keyboardClearContextMock: vi.fn(),
 }));
 
-vi.mock("../../../src/bot/commands/abort.js", () => ({
+vi.mock("../../../src/platform/telegram/commands/abort.js", () => ({
   abortCurrentOperation: mocked.abortCurrentOperationMock,
 }));
 

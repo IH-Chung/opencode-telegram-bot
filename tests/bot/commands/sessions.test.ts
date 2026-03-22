@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Context } from "grammy";
-import { sessionsCommand, handleSessionSelect } from "../../../src/bot/commands/sessions.js";
+import { sessionsCommand, handleSessionSelect } from "../../../src/platform/telegram/commands/sessions.js";
 import { interactionManager } from "../../../src/interaction/manager.js";
 import { t } from "../../../src/i18n/index.js";
 

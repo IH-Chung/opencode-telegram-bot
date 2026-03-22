@@ -1,8 +1,8 @@
 import { CommandContext, Context } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { processManager } from "../../process/manager.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { processManager } from "../../../process/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Command handler for /opencode-stop

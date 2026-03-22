@@ -1,7 +1,7 @@
 import { CommandContext, Context } from "grammy";
-import { opencodeClient } from "../../opencode/client.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 export async function modelsCommand(ctx: CommandContext<Context>) {
   try {
