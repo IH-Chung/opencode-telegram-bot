@@ -1,5 +1,4 @@
 import { Event, ToolState } from "@opencode-ai/sdk/v2";
-import type { Bot } from "grammy";
 import type { CodeFileData } from "./formatter.js";
 import { normalizePathForDisplay, prepareCodeFile } from "./formatter.js";
 import type { Question } from "../question/types.js";
@@ -149,14 +148,12 @@ class SummaryAggregator {
   private onClearedCallback: ClearedCallback | null = null;
   private processedToolStates: Set<string> = new Set();
   private thinkingFiredForMessages: Set<string> = new Set();
-  private bot: Bot | null = null;
-  private chatId: number | null = null;
+  private typingIndicatorCallback: (() => Promise<void>) | null = null;
   private typingTimer: ReturnType<typeof setInterval> | null = null;
   private partHashes: Map<string, Set<string>> = new Map();
 
-  setBotAndChatId(bot: Bot, chatId: number): void {
-    this.bot = bot;
-    this.chatId = chatId;
+  setTypingIndicator(callback: () => Promise<void>): void {
+    this.typingIndicatorCallback = callback;
   }
 
   setOnComplete(callback: MessageCompleteCallback): void {
@@ -229,8 +226,8 @@ class SummaryAggregator {
     }
 
     const sendTyping = () => {
-      if (this.bot && this.chatId) {
-        this.bot.api.sendChatAction(this.chatId, "typing").catch((err) => {
+      if (this.typingIndicatorCallback) {
+        this.typingIndicatorCallback().catch((err: unknown) => {
           logger.error("Failed to send typing action:", err);
         });
       }

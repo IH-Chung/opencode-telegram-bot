@@ -194,7 +194,11 @@ async function ensureEventSubscription(directory: string): Promise<void> {
 
   // Ensure aggregator has bot reference for typing indicators
   if (botInstance && chatIdInstance) {
-    summaryAggregator.setBotAndChatId(botInstance, chatIdInstance);
+    summaryAggregator.setTypingIndicator(async () => {
+      if (botInstance && chatIdInstance) {
+        await botInstance.api.sendChatAction(chatIdInstance, "typing");
+      }
+    });
   }
 
   toolMessageBatcher.setIntervalSeconds(config.bot.serviceMessagesIntervalSec);
@@ -685,7 +689,11 @@ export async function autoSubscribeEvents(bot: Bot<Context>): Promise<void> {
 
   botInstance = bot;
   chatIdInstance = chatId;
-  summaryAggregator.setBotAndChatId(bot, chatId);
+  summaryAggregator.setTypingIndicator(async () => {
+    if (botInstance && chatIdInstance) {
+      await botInstance.api.sendChatAction(chatIdInstance, "typing");
+    }
+  });
 
   // Set the session in the aggregator so SSE message events are not dropped.
   const currentSession = getCurrentSession();
@@ -829,7 +837,11 @@ export function createBot(): Bot<Context> {
   bot.command("new", (ctx) => {
     botInstance = bot;
     chatIdInstance = ctx.chat.id;
-    summaryAggregator.setBotAndChatId(bot, ctx.chat.id);
+    summaryAggregator.setTypingIndicator(async () => {
+      if (botInstance && chatIdInstance) {
+        await botInstance.api.sendChatAction(chatIdInstance, "typing");
+      }
+    });
     return newCommand(ctx, { ensureEventSubscription });
   });
   bot.command("abort", abortCommand);

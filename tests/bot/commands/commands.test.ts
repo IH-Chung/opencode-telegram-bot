@@ -27,7 +27,6 @@ const mocked = vi.hoisted(() => ({
   clearSessionMock: vi.fn(),
   ingestSessionInfoForCacheMock: vi.fn(),
   setSessionSummaryMock: vi.fn(),
-  setBotAndChatIdMock: vi.fn(),
   clearSummaryMock: vi.fn(),
   ensureEventSubscriptionMock: vi.fn(),
   safeBackgroundTaskMock: vi.fn(),
@@ -70,7 +69,7 @@ vi.mock("../../../src/opencode/client.js", () => ({
 vi.mock("../../../src/summary/aggregator.js", () => ({
   summaryAggregator: {
     setSession: mocked.setSessionSummaryMock,
-    setBotAndChatId: mocked.setBotAndChatIdMock,
+    setTypingIndicator: vi.fn(),
     clear: mocked.clearSummaryMock,
   },
 }));
@@ -189,7 +188,6 @@ describe("bot/commands/commands", () => {
     mocked.clearSessionMock.mockReset();
     mocked.ingestSessionInfoForCacheMock.mockReset();
     mocked.setSessionSummaryMock.mockReset();
-    mocked.setBotAndChatIdMock.mockReset();
     mocked.clearSummaryMock.mockReset();
     mocked.ensureEventSubscriptionMock.mockReset();
     mocked.safeBackgroundTaskMock.mockReset();

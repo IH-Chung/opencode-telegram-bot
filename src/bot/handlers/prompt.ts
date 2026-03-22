@@ -186,7 +186,9 @@ export async function processUserPrompt(
   await ensureEventSubscription(currentSession.directory);
 
   summaryAggregator.setSession(currentSession.id);
-  summaryAggregator.setBotAndChatId(bot, ctx.chat!.id);
+  summaryAggregator.setTypingIndicator(async () => {
+    await bot.api.sendChatAction(ctx.chat!.id, "typing");
+  });
 
   const sessionIsBusy = await isSessionBusy(currentSession.id, currentSession.directory);
   if (sessionIsBusy) {

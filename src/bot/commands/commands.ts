@@ -307,7 +307,9 @@ async function executeCommand(
 
   await deps.ensureEventSubscription(session.directory);
   summaryAggregator.setSession(session.id);
-  summaryAggregator.setBotAndChatId(deps.bot, ctx.chat.id);
+  summaryAggregator.setTypingIndicator(async () => {
+    await deps.bot.api.sendChatAction(ctx.chat!.id, "typing");
+  });
 
   const sessionIsBusy = await isSessionBusy(session.id, session.directory);
   if (sessionIsBusy) {
