@@ -1,12 +1,12 @@
 import type { Api } from "grammy";
-import { createMainKeyboard } from "../bot/utils/keyboard.js";
-import type { ModelInfo } from "../model/types.js";
-import { getStoredAgent } from "../agent/manager.js";
-import { getStoredModel } from "../model/manager.js";
-import { formatVariantForButton } from "../variant/manager.js";
-import { logger } from "../utils/logger.js";
-import type { ContextInfo, KeyboardState } from "./types.js";
-import { t } from "../i18n/index.js";
+import { createMainKeyboard } from "../../bot/utils/keyboard.js";
+import type { ModelInfo } from "../../model/types.js";
+import { getStoredAgent } from "../../agent/manager.js";
+import { getStoredModel } from "../../model/manager.js";
+import { formatVariantForButton } from "../../variant/manager.js";
+import { logger } from "../../utils/logger.js";
+import type { ContextInfo, KeyboardState } from "./keyboard-types.js";
+import { t } from "../../i18n/index.js";
 
 /**
  * Keyboard Manager - manages Reply Keyboard state and updates

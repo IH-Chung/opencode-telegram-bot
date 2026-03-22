@@ -11,8 +11,7 @@ interface SummaryAggregatorPrivateState {
   onPermissionCallback: null;
   onSessionDiffCallback: null;
   onFileChangeCallback: null;
-  bot: null;
-  chatId: null;
+  typingIndicatorCallback: null;
 }
 
 interface KeyboardManagerPrivateState {
@@ -70,7 +69,7 @@ export async function resetSingletonState(): Promise<void> {
     import("../../src/rename/manager.js"),
     import("../../src/interaction/manager.js"),
     import("../../src/summary/aggregator.js"),
-    import("../../src/keyboard/manager.js"),
+    import("../../src/platform/telegram/keyboard-manager.js"),
     import("../../src/pinned/manager.js"),
     import("../../src/process/manager.js"),
     import("../../src/opencode/events.js"),
@@ -101,8 +100,7 @@ export async function resetSingletonState(): Promise<void> {
   aggregator.onPermissionCallback = null;
   aggregator.onSessionDiffCallback = null;
   aggregator.onFileChangeCallback = null;
-  aggregator.bot = null;
-  aggregator.chatId = null;
+  aggregator.typingIndicatorCallback = null;
 
   const keyboard = keyboardManager as unknown as KeyboardManagerPrivateState;
   keyboard.state = null;

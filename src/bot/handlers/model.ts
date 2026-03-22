@@ -7,7 +7,7 @@ import { logger } from "../../utils/logger.js";
 import { createMainKeyboard } from "../utils/keyboard.js";
 import { getStoredAgent } from "../../agent/manager.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
-import { keyboardManager } from "../../keyboard/manager.js";
+import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
 import {
   appendInlineMenuCancelButton,
   clearActiveInlineMenu,

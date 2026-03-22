@@ -45,7 +45,7 @@ import { questionManager } from "../question/manager.js";
 import { permissionManager } from "../permission/manager.js";
 import { interactionManager } from "../interaction/manager.js";
 import { clearAllInteractionState } from "../interaction/cleanup.js";
-import { keyboardManager } from "../keyboard/manager.js";
+import { keyboardManager } from "../platform/telegram/keyboard-manager.js";
 import { subscribeToEvents } from "../opencode/events.js";
 import { summaryAggregator } from "../summary/aggregator.js";
 import { formatSummary, formatToolInfo } from "../summary/formatter.js";

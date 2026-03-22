@@ -67,7 +67,7 @@ vi.mock("../../../src/pinned/manager.js", () => ({
   },
 }));
 
-vi.mock("../../../src/keyboard/manager.js", () => ({
+vi.mock("../../../src/platform/telegram/keyboard-manager.js", () => ({
   keyboardManager: {
     initialize: mocked.keyboardInitializeMock,
     updateAgent: mocked.keyboardUpdateAgentMock,

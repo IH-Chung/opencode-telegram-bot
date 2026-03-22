@@ -53,7 +53,7 @@ vi.mock("../../../src/interaction/cleanup.js", () => ({
   clearAllInteractionState: mocked.clearInteractionMock,
 }));
 
-vi.mock("../../../src/keyboard/manager.js", () => ({
+vi.mock("../../../src/platform/telegram/keyboard-manager.js", () => ({
   keyboardManager: {
     initialize: mocked.keyboardInitializeMock,
     getKeyboard: mocked.keyboardGetKeyboardMock,

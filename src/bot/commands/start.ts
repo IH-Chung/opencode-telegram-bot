@@ -4,7 +4,7 @@ import { getStoredAgent } from "../../agent/manager.js";
 import { getStoredModel } from "../../model/manager.js";
 import { formatVariantForButton } from "../../variant/manager.js";
 import { pinnedMessageManager } from "../../pinned/manager.js";
-import { keyboardManager } from "../../keyboard/manager.js";
+import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
 import { clearSession } from "../../session/manager.js";
 import { clearProject } from "../../settings/manager.js";
 import { abortCurrentOperation } from "./abort.js";
