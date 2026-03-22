@@ -1,14 +1,14 @@
 import { Context, InlineKeyboard } from "grammy";
-import { getCurrentSession } from "../../session/manager.js";
-import { opencodeClient } from "../../opencode/client.js";
-import { getStoredModel } from "../../model/manager.js";
+import { getCurrentSession } from "../../../session/manager.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { getStoredModel } from "../../../model/manager.js";
 import {
   clearActiveInlineMenu,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
 } from "./inline-menu.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Build inline keyboard with compact confirmation menu

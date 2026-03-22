@@ -6,7 +6,7 @@ import {
   ensureActiveInlineMenu,
   handleInlineMenuCancel,
   replyWithInlineMenu,
-} from "../../../src/bot/handlers/inline-menu.js";
+} from "../../../src/platform/telegram/handlers/inline-menu.js";
 import { t } from "../../../src/i18n/index.js";
 
 function createReplyContext(messageId: number = 1): Context {

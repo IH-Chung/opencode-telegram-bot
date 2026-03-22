@@ -6,7 +6,7 @@ import {
   handleQuestionCallback,
   handleQuestionTextAnswer,
   showCurrentQuestion,
-} from "../../../src/bot/handlers/question.js";
+} from "../../../src/platform/telegram/handlers/question.js";
 import type { Question } from "../../../src/question/types.js";
 import { t } from "../../../src/i18n/index.js";
 

@@ -6,7 +6,7 @@ import { interactionManager } from "../../../src/interaction/manager.js";
 import {
   showPermissionRequest,
   handlePermissionCallback,
-} from "../../../src/bot/handlers/permission.js";
+} from "../../../src/platform/telegram/handlers/permission.js";
 import { t } from "../../../src/i18n/index.js";
 
 const mocked = vi.hoisted(() => ({

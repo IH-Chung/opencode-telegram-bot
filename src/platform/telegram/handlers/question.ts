@@ -1,15 +1,15 @@
 import { Context, InlineKeyboard } from "grammy";
-import { questionManager } from "../../question/manager.js";
-import { opencodeClient } from "../../opencode/client.js";
-import { getCurrentProject } from "../../settings/manager.js";
-import { getCurrentSession } from "../../session/manager.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { interactionManager } from "../../interaction/manager.js";
-import { logger } from "../../utils/logger.js";
-import { safeBackgroundTask } from "../../utils/safe-background-task.js";
-import { toMessageRef, fromMessageRef } from "../../platform/telegram/adapter.js";
-import { t } from "../../i18n/index.js";
-import { markBotQuestionReply } from "../index.js";
+import { questionManager } from "../../../question/manager.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { getCurrentProject } from "../../../settings/manager.js";
+import { getCurrentSession } from "../../../session/manager.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { interactionManager } from "../../../interaction/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
+import { toMessageRef, fromMessageRef } from "../adapter.js";
+import { t } from "../../../i18n/index.js";
+import { markBotQuestionReply } from "../../../bot/index.js";
 
 const MAX_BUTTON_LENGTH = 60;
 

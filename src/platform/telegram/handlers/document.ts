@@ -1,16 +1,16 @@
 import type { Context } from "grammy";
-import { config } from "../../config.js";
+import { config } from "../../../config.js";
 import { processUserPrompt, type ProcessPromptDeps } from "./prompt.js";
 import {
   downloadTelegramFile,
   toDataUri,
   isTextMimeType,
   isFileSizeAllowed,
-} from "../../platform/telegram/utils/file-download.js";
-import { getModelCapabilities, supportsInput } from "../../model/capabilities.js";
-import { getStoredModel } from "../../model/manager.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+} from "../utils/file-download.js";
+import { getModelCapabilities, supportsInput } from "../../../model/capabilities.js";
+import { getStoredModel } from "../../../model/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 import type { FilePartInput, Model } from "@opencode-ai/sdk/v2";
 
 export interface DocumentHandlerDeps extends ProcessPromptDeps {

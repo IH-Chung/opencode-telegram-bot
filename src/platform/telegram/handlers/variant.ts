@@ -5,19 +5,19 @@ import {
   setCurrentVariant,
   formatVariantForDisplay,
   formatVariantForButton,
-} from "../../variant/manager.js";
-import { getStoredModel } from "../../model/manager.js";
-import { getStoredAgent } from "../../agent/manager.js";
-import { logger } from "../../utils/logger.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
+} from "../../../variant/manager.js";
+import { getStoredModel } from "../../../model/manager.js";
+import { getStoredAgent } from "../../../agent/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { keyboardManager } from "../keyboard-manager.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { createMainKeyboard } from "../utils/keyboard.js";
 import {
   clearActiveInlineMenu,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
 } from "./inline-menu.js";
-import { t } from "../../i18n/index.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Handle variant selection callback

@@ -1,8 +1,8 @@
 import { Context, InlineKeyboard } from "grammy";
-import { interactionManager } from "../../interaction/manager.js";
-import type { InteractionState } from "../../interaction/types.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { interactionManager } from "../../../interaction/manager.js";
+import type { InteractionState } from "../../../interaction/types.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 const INLINE_MENU_CANCEL_PREFIX = "inline:cancel:";
 const LEGACY_CONTEXT_CANCEL_CALLBACK = "compact:cancel";

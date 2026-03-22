@@ -4,11 +4,11 @@ import { URL } from "node:url";
 import type { Context } from "grammy";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { SocksProxyAgent } from "socks-proxy-agent";
-import { config } from "../../config.js";
-import { isSttConfigured, transcribeAudio, type SttResult } from "../../stt/client.js";
+import { config } from "../../../config.js";
+import { isSttConfigured, transcribeAudio, type SttResult } from "../../../stt/client.js";
 import { processUserPrompt, type ProcessPromptDeps } from "./prompt.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 const TELEGRAM_DOWNLOAD_TIMEOUT_MS = 30_000;
 const TELEGRAM_DOWNLOAD_MAX_REDIRECTS = 3;

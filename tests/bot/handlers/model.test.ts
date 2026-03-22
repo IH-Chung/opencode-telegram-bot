@@ -3,7 +3,7 @@ import {
   parseModelPageCallback,
   buildCombinedModelList,
   calculateModelsPaginationRange,
-} from "../../../src/bot/handlers/model.js";
+} from "../../../src/platform/telegram/handlers/model.js";
 
 describe("bot/handlers/model", () => {
   describe("parseModelPageCallback", () => {

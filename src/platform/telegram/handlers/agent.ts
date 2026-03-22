@@ -4,20 +4,20 @@ import {
   getAvailableAgents,
   fetchCurrentAgent,
   getAgentDefaultModel,
-} from "../../agent/manager.js";
-import { getAgentDisplayName, getAgentEmoji } from "../../agent/types.js";
-import { selectModel, getStoredModel } from "../../model/manager.js";
-import { formatVariantForButton } from "../../variant/manager.js";
-import { logger } from "../../utils/logger.js";
-import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
+} from "../../../agent/manager.js";
+import { getAgentDisplayName, getAgentEmoji } from "../../../agent/types.js";
+import { selectModel, getStoredModel } from "../../../model/manager.js";
+import { formatVariantForButton } from "../../../variant/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { createMainKeyboard } from "../utils/keyboard.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { keyboardManager } from "../keyboard-manager.js";
 import {
   clearActiveInlineMenu,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
 } from "./inline-menu.js";
-import { t } from "../../i18n/index.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Handle agent selection callback

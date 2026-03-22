@@ -34,13 +34,13 @@ import {
   handleQuestionCallback,
   showCurrentQuestion,
   handleQuestionTextAnswer,
-} from "./handlers/question.js";
-import { handlePermissionCallback, showPermissionRequest } from "./handlers/permission.js";
-import { handleAgentSelect, showAgentSelectionMenu } from "./handlers/agent.js";
-import { handleModelSelect, showModelSelectionMenu } from "./handlers/model.js";
-import { handleVariantSelect, showVariantSelectionMenu } from "./handlers/variant.js";
-import { handleContextButtonPress, handleCompactConfirm } from "./handlers/context.js";
-import { handleInlineMenuCancel } from "./handlers/inline-menu.js";
+} from "../platform/telegram/handlers/question.js";
+import { handlePermissionCallback, showPermissionRequest } from "../platform/telegram/handlers/permission.js";
+import { handleAgentSelect, showAgentSelectionMenu } from "../platform/telegram/handlers/agent.js";
+import { handleModelSelect, showModelSelectionMenu } from "../platform/telegram/handlers/model.js";
+import { handleVariantSelect, showVariantSelectionMenu } from "../platform/telegram/handlers/variant.js";
+import { handleContextButtonPress, handleCompactConfirm } from "../platform/telegram/handlers/context.js";
+import { handleInlineMenuCancel } from "../platform/telegram/handlers/inline-menu.js";
 import { questionManager } from "../question/manager.js";
 import { permissionManager } from "../permission/manager.js";
 import { interactionManager } from "../interaction/manager.js";
@@ -58,9 +58,9 @@ import { logger } from "../utils/logger.js";
 import { safeBackgroundTask } from "../utils/safe-background-task.js";
 import { pinnedMessageManager } from "../platform/telegram/pinned-manager.js";
 import { t } from "../i18n/index.js";
-import { processUserPrompt } from "./handlers/prompt.js";
-import { handleVoiceMessage } from "./handlers/voice.js";
-import { handleDocumentMessage } from "./handlers/document.js";
+import { processUserPrompt } from "../platform/telegram/handlers/prompt.js";
+import { handleVoiceMessage } from "../platform/telegram/handlers/voice.js";
+import { handleDocumentMessage } from "../platform/telegram/handlers/document.js";
 import { downloadTelegramFile, toDataUri } from "../platform/telegram/utils/file-download.js";
 import { sendMessageWithMarkdownFallback } from "../platform/telegram/utils/send-with-markdown-fallback.js";
 import { getModelCapabilities, supportsInput } from "../model/capabilities.js";

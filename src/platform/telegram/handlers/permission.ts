@@ -1,18 +1,18 @@
 import { Context, InlineKeyboard } from "grammy";
-import { permissionManager } from "../../permission/manager.js";
-import { opencodeClient } from "../../opencode/client.js";
-import { getCurrentProject } from "../../settings/manager.js";
-import { getCurrentSession } from "../../session/manager.js";
-import { summaryAggregator } from "../../summary/aggregator.js";
-import { interactionManager } from "../../interaction/manager.js";
-import { isTelegramMarkdownParseError } from "../../platform/telegram/utils/send-with-markdown-fallback.js";
-import { logger } from "../../utils/logger.js";
-import { safeBackgroundTask } from "../../utils/safe-background-task.js";
-import { markBotPermissionReply } from "../index.js";
-import { PermissionRequest, PermissionReply } from "../../permission/types.js";
-import { toMessageRef } from "../../platform/telegram/adapter.js";
-import type { I18nKey } from "../../i18n/en.js";
-import { t } from "../../i18n/index.js";
+import { permissionManager } from "../../../permission/manager.js";
+import { opencodeClient } from "../../../opencode/client.js";
+import { getCurrentProject } from "../../../settings/manager.js";
+import { getCurrentSession } from "../../../session/manager.js";
+import { summaryAggregator } from "../../../summary/aggregator.js";
+import { interactionManager } from "../../../interaction/manager.js";
+import { isTelegramMarkdownParseError } from "../utils/send-with-markdown-fallback.js";
+import { logger } from "../../../utils/logger.js";
+import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
+import { markBotPermissionReply } from "../../../bot/index.js";
+import { PermissionRequest, PermissionReply } from "../../../permission/types.js";
+import { toMessageRef } from "../adapter.js";
+import type { I18nKey } from "../../../i18n/en.js";
+import { t } from "../../../i18n/index.js";
 
 // Permission type display names
 const PERMISSION_NAME_KEYS: Record<string, I18nKey> = {

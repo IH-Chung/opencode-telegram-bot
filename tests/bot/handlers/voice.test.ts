@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Context } from "grammy";
-import { handleVoiceMessage, type VoiceMessageDeps } from "../../../src/bot/handlers/voice.js";
+import { handleVoiceMessage, type VoiceMessageDeps } from "../../../src/platform/telegram/handlers/voice.js";
 import { t } from "../../../src/i18n/index.js";
 
 function createVoiceContext(): {

@@ -16,7 +16,7 @@ import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
-} from "../handlers/inline-menu.js";
+} from "../../platform/telegram/handlers/inline-menu.js";
 import { logger } from "../../utils/logger.js";
 import { t } from "../../i18n/index.js";
 import { config } from "../../config.js";

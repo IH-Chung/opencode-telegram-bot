@@ -13,7 +13,7 @@ vi.mock("../../../src/project/manager.js", () => ({
   getProjects: mocked.getProjectsMock,
 }));
 
-vi.mock("../../../src/bot/handlers/inline-menu.js", () => ({
+vi.mock("../../../src/platform/telegram/handlers/inline-menu.js", () => ({
   appendInlineMenuCancelButton: vi.fn(),
   ensureActiveInlineMenu: mocked.ensureActiveInlineMenuMock,
   replyWithInlineMenu: vi.fn(),

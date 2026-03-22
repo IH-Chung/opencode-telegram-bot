@@ -13,7 +13,7 @@ import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
-} from "../handlers/inline-menu.js";
+} from "../../platform/telegram/handlers/inline-menu.js";
 import { logger } from "../../utils/logger.js";
 import { safeBackgroundTask } from "../../utils/safe-background-task.js";
 import { config } from "../../config.js";

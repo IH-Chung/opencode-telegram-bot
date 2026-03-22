@@ -1,21 +1,21 @@
 import { Context, InlineKeyboard } from "grammy";
-import { selectModel, fetchCurrentModel, getModelSelectionLists } from "../../model/manager.js";
-import { formatModelForDisplay } from "../../model/types.js";
-import type { FavoriteModel, ModelInfo } from "../../model/types.js";
-import { formatVariantForButton } from "../../variant/manager.js";
-import { logger } from "../../utils/logger.js";
-import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
-import { getStoredAgent } from "../../agent/manager.js";
-import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
-import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
+import { selectModel, fetchCurrentModel, getModelSelectionLists } from "../../../model/manager.js";
+import { formatModelForDisplay } from "../../../model/types.js";
+import type { FavoriteModel, ModelInfo } from "../../../model/types.js";
+import { formatVariantForButton } from "../../../variant/manager.js";
+import { logger } from "../../../utils/logger.js";
+import { createMainKeyboard } from "../utils/keyboard.js";
+import { getStoredAgent } from "../../../agent/manager.js";
+import { pinnedMessageManager } from "../pinned-manager.js";
+import { keyboardManager } from "../keyboard-manager.js";
 import {
   appendInlineMenuCancelButton,
   clearActiveInlineMenu,
   ensureActiveInlineMenu,
   replyWithInlineMenu,
 } from "./inline-menu.js";
-import { t } from "../../i18n/index.js";
-import { config } from "../../config.js";
+import { t } from "../../../i18n/index.js";
+import { config } from "../../../config.js";
 
 const MODEL_PAGE_CALLBACK_PREFIX = "model:page:";
 
