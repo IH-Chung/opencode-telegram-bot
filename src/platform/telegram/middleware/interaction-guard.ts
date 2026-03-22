@@ -1,9 +1,9 @@
 import type { Context, NextFunction } from "grammy";
-import { resolveInteractionGuardDecision } from "../../interaction/guard.js";
-import type { BlockReason, InteractionKind } from "../../interaction/types.js";
-import { normalizeInput } from "../../platform/telegram/utils/normalize-input.js";
-import { logger } from "../../utils/logger.js";
-import { t } from "../../i18n/index.js";
+import { resolveInteractionGuardDecision } from "../../../interaction/guard.js";
+import type { BlockReason, InteractionKind } from "../../../interaction/types.js";
+import { normalizeInput } from "../utils/normalize-input.js";
+import { logger } from "../../../utils/logger.js";
+import { t } from "../../../i18n/index.js";
 
 function getInteractionBlockedMessage(
   reason: BlockReason | undefined,

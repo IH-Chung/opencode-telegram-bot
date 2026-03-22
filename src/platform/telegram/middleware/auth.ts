@@ -1,6 +1,6 @@
 import { Context, NextFunction } from "grammy";
-import { config } from "../../config.js";
-import { logger } from "../../utils/logger.js";
+import { config } from "../../../config.js";
+import { logger } from "../../../utils/logger.js";
 
 export async function authMiddleware(ctx: Context, next: NextFunction): Promise<void> {
   const userId = ctx.from?.id;

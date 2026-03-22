@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Context, NextFunction } from "grammy";
-import { interactionGuardMiddleware } from "../../../src/bot/middleware/interaction-guard.js";
+import { interactionGuardMiddleware } from "../../../src/platform/telegram/middleware/interaction-guard.js";
 import { interactionManager } from "../../../src/interaction/manager.js";
 import { t } from "../../../src/i18n/index.js";
 
