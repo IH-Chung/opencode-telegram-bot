@@ -6,7 +6,7 @@ import {
   toDataUri,
   isTextMimeType,
   isFileSizeAllowed,
-} from "../utils/file-download.js";
+} from "../../platform/telegram/utils/file-download.js";
 import { getModelCapabilities, supportsInput } from "../../model/capabilities.js";
 import { getStoredModel } from "../../model/manager.js";
 import { logger } from "../../utils/logger.js";

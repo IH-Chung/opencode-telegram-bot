@@ -4,7 +4,7 @@ import { formatModelForDisplay } from "../../model/types.js";
 import type { FavoriteModel, ModelInfo } from "../../model/types.js";
 import { formatVariantForButton } from "../../variant/manager.js";
 import { logger } from "../../utils/logger.js";
-import { createMainKeyboard } from "../utils/keyboard.js";
+import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
 import { getStoredAgent } from "../../agent/manager.js";
 import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
 import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";

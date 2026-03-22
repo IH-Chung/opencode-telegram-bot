@@ -11,7 +11,7 @@ import { getStoredAgent } from "../../agent/manager.js";
 import { getStoredModel } from "../../model/manager.js";
 import { formatVariantForButton } from "../../variant/manager.js";
 import { clearAllInteractionState } from "../../interaction/cleanup.js";
-import { createMainKeyboard } from "../utils/keyboard.js";
+import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
 import {
   appendInlineMenuCancelButton,
   ensureActiveInlineMenu,

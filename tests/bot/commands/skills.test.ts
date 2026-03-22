@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { skillsCommand } from "../../../src/bot/commands/skills.js";
 import * as settingsManager from "../../../src/settings/manager.js";
 import * as skillManager from "../../../src/skill/manager.js";
-import * as sendWithMarkdownFallback from "../../../src/bot/utils/send-with-markdown-fallback.js";
+import * as sendWithMarkdownFallback from "../../../src/platform/telegram/utils/send-with-markdown-fallback.js";
 
 describe("bot/commands/skills", () => {
   beforeEach(() => {

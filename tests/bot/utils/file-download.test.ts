@@ -4,7 +4,7 @@ import {
   formatFileSize,
   isFileSizeAllowed,
   isTextMimeType,
-} from "../../../src/bot/utils/file-download.js";
+} from "../../../src/platform/telegram/utils/file-download.js";
 
 describe("bot/utils/file-download", () => {
   describe("toDataUri", () => {

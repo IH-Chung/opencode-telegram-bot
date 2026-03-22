@@ -40,7 +40,7 @@ vi.mock("../../../src/settings/manager.js", () => ({
   clearProject: mocked.clearProjectMock,
 }));
 
-vi.mock("../../../src/bot/utils/keyboard.js", () => ({
+vi.mock("../../../src/platform/telegram/utils/keyboard.js", () => ({
   createMainKeyboard: mocked.createMainKeyboardMock,
 }));
 

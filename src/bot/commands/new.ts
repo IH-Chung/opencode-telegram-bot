@@ -10,7 +10,7 @@ import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
 import { getStoredAgent, getAgentDefaultModel } from "../../agent/manager.js";
 import { getStoredModel, selectModel } from "../../model/manager.js";
 import { formatVariantForButton } from "../../variant/manager.js";
-import { createMainKeyboard } from "../utils/keyboard.js";
+import { createMainKeyboard } from "../../platform/telegram/utils/keyboard.js";
 import { safeBackgroundTask } from "../../utils/safe-background-task.js";
 import { logger } from "../../utils/logger.js";
 import { t } from "../../i18n/index.js";

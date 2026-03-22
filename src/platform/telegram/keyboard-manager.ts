@@ -1,5 +1,5 @@
 import type { Api } from "grammy";
-import { createMainKeyboard } from "../../bot/utils/keyboard.js";
+import { createMainKeyboard } from "./utils/keyboard.js";
 import type { ModelInfo } from "../../model/types.js";
 import { getStoredAgent } from "../../agent/manager.js";
 import { getStoredModel } from "../../model/manager.js";

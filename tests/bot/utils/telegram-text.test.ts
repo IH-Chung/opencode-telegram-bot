@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { editBotText, sendBotText } from "../../../src/bot/utils/telegram-text.js";
+import { editBotText, sendBotText } from "../../../src/platform/telegram/utils/telegram-text.js";
 
 describe("bot/utils/telegram-text", () => {
   it("sends raw messages by default", async () => {

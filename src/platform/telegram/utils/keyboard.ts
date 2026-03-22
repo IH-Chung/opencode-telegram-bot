@@ -1,9 +1,9 @@
 import { Keyboard } from "grammy";
-import { getAgentDisplayName } from "../../agent/types.js";
-import { formatModelForButton } from "../../model/types.js";
-import type { ModelInfo } from "../../model/types.js";
-import type { ContextInfo } from "../../platform/telegram/keyboard-types.js";
-import { t } from "../../i18n/index.js";
+import { getAgentDisplayName } from "../../../agent/types.js";
+import { formatModelForButton } from "../../../model/types.js";
+import type { ModelInfo } from "../../../model/types.js";
+import type { ContextInfo } from "../keyboard-types.js";
+import { t } from "../../../i18n/index.js";
 
 /**
  * Format token count for display (e.g., 150000 -> "150K", 1500000 -> "1.5M")

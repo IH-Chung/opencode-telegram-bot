@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { shouldForwardAssistantReply } from "../../../src/bot/utils/assistant-reply-forwarding.js";
+import { shouldForwardAssistantReply } from "../../../src/platform/telegram/utils/assistant-reply-forwarding.js";
 
 describe("shouldForwardAssistantReply", () => {
   it("forwards when session matches current session", async () => {

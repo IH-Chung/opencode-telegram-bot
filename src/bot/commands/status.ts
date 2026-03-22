@@ -10,7 +10,7 @@ import { keyboardManager } from "../../platform/telegram/keyboard-manager.js";
 import { pinnedMessageManager } from "../../platform/telegram/pinned-manager.js";
 import { logger } from "../../utils/logger.js";
 import { t } from "../../i18n/index.js";
-import { sendMessageWithMarkdownFallback } from "../utils/send-with-markdown-fallback.js";
+import { sendMessageWithMarkdownFallback } from "../../platform/telegram/utils/send-with-markdown-fallback.js";
 
 export async function statusCommand(ctx: CommandContext<Context>) {
   try {

@@ -2,7 +2,7 @@ import type { CommandContext, Context } from "grammy";
 import { getCurrentProject } from "../../settings/manager.js";
 import { getAvailableSkills } from "../../skill/manager.js";
 import { t } from "../../i18n/index.js";
-import { sendMessageWithMarkdownFallback } from "../utils/send-with-markdown-fallback.js";
+import { sendMessageWithMarkdownFallback } from "../../platform/telegram/utils/send-with-markdown-fallback.js";
 
 export async function skillsCommand(ctx: CommandContext<Context>) {
   const currentProject = getCurrentProject();

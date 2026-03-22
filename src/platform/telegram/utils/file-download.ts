@@ -1,6 +1,6 @@
 import type { Api } from "grammy";
-import { config } from "../../config.js";
-import { logger } from "../../utils/logger.js";
+import { config } from "../../../config.js";
+import { logger } from "../../../utils/logger.js";
 
 const TELEGRAM_FILE_URL_BASE = "https://api.telegram.org/file/bot";
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB Telegram limit

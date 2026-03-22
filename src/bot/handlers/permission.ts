@@ -5,7 +5,7 @@ import { getCurrentProject } from "../../settings/manager.js";
 import { getCurrentSession } from "../../session/manager.js";
 import { summaryAggregator } from "../../summary/aggregator.js";
 import { interactionManager } from "../../interaction/manager.js";
-import { isTelegramMarkdownParseError } from "../utils/send-with-markdown-fallback.js";
+import { isTelegramMarkdownParseError } from "../../platform/telegram/utils/send-with-markdown-fallback.js";
 import { logger } from "../../utils/logger.js";
 import { safeBackgroundTask } from "../../utils/safe-background-task.js";
 import { markBotPermissionReply } from "../index.js";

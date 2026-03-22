@@ -3,7 +3,7 @@ import {
   createAgentKeyboard,
   createMainKeyboard,
   removeKeyboard,
-} from "../../../src/bot/utils/keyboard.js";
+} from "../../../src/platform/telegram/utils/keyboard.js";
 
 function getButtonText(button: string | { text: string }): string {
   return typeof button === "string" ? button : button.text;

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   isTelegramMarkdownParseError,
   sendMessageWithMarkdownFallback,
-} from "../../../src/bot/utils/send-with-markdown-fallback.js";
+} from "../../../src/platform/telegram/utils/send-with-markdown-fallback.js";
 
 describe("bot/utils/send-with-markdown-fallback", () => {
   it("sends with MarkdownV2 when there is no parse error", async () => {

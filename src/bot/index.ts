@@ -61,12 +61,12 @@ import { t } from "../i18n/index.js";
 import { processUserPrompt } from "./handlers/prompt.js";
 import { handleVoiceMessage } from "./handlers/voice.js";
 import { handleDocumentMessage } from "./handlers/document.js";
-import { downloadTelegramFile, toDataUri } from "./utils/file-download.js";
-import { sendMessageWithMarkdownFallback } from "./utils/send-with-markdown-fallback.js";
+import { downloadTelegramFile, toDataUri } from "../platform/telegram/utils/file-download.js";
+import { sendMessageWithMarkdownFallback } from "../platform/telegram/utils/send-with-markdown-fallback.js";
 import { getModelCapabilities, supportsInput } from "../model/capabilities.js";
 import { getStoredModel } from "../model/manager.js";
 import { opencodeClient } from "../opencode/client.js";
-import { shouldForwardAssistantReply } from "./utils/assistant-reply-forwarding.js";
+import { shouldForwardAssistantReply } from "../platform/telegram/utils/assistant-reply-forwarding.js";
 import { startMessagePolling, stopMessagePolling } from "../opencode/message-poller.js";
 import { fromMessageRef } from "../platform/telegram/adapter.js";
 import {
