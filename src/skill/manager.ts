@@ -36,10 +36,9 @@ export async function getAvailableSkills(directory?: string): Promise<SkillInfo[
     });
 
     if (!response.ok) {
-      logger.error(
-        `[SkillManager] Failed to fetch skills: ${response.status} ${response.statusText}`,
-      );
-      return [];
+      const errorMsg = `Failed to fetch skills: ${response.status} ${response.statusText}`;
+      logger.error(`[SkillManager] ${errorMsg}`);
+      throw new Error(errorMsg);
     }
 
     const skills = (await response.json()) as SkillInfo[];
@@ -47,6 +46,6 @@ export async function getAvailableSkills(directory?: string): Promise<SkillInfo[
     return skills;
   } catch (err) {
     logger.error("[SkillManager] Error fetching skills:", err);
-    return [];
+    throw err;
   }
 }

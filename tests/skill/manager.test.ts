@@ -74,24 +74,20 @@ describe("skill/manager", () => {
     expect(result).toEqual([]);
   });
 
-  it("returns empty array when fetch fails", async () => {
+  it("throws when fetch fails", async () => {
     fetchMock.mockRejectedValueOnce(new Error("Network error"));
 
-    const result = await getAvailableSkills();
-
-    expect(result).toEqual([]);
+    await expect(getAvailableSkills()).rejects.toThrow("Network error");
   });
 
-  it("returns empty array when response is not ok", async () => {
+  it("throws when response is not ok", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
       statusText: "Internal Server Error",
     } as unknown as Response);
 
-    const result = await getAvailableSkills();
-
-    expect(result).toEqual([]);
+    await expect(getAvailableSkills()).rejects.toThrow("500");
   });
 
   it("passes directory query param when provided", async () => {
