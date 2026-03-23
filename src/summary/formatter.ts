@@ -5,11 +5,22 @@ import type { MessageFormatMode } from "../config.js";
 import { logger } from "../utils/logger.js";
 import { t } from "../i18n/index.js";
 import { getCurrentProject } from "../settings/manager.js";
-import { TELEGRAM_MESSAGE_LIMIT } from "../platform/telegram/formatter.js";
-import { formatMarkdownForTelegram } from "../platform/telegram/formatter.js";
+import { TELEGRAM_FORMAT_CONFIG } from "../platform/telegram/formatter.js";
 
+// Re-export for backward compat (other files may use these)
 export { TELEGRAM_MESSAGE_LIMIT } from "../platform/telegram/formatter.js";
 export { getAssistantParseMode } from "../platform/telegram/formatter.js";
+export { TELEGRAM_FORMAT_CONFIG } from "../platform/telegram/formatter.js";
+
+/**
+ * Configuration for platform-specific message formatting.
+ */
+export interface PlatformFormatConfig {
+  /** Maximum message length for the platform */
+  messageMaxLength: number;
+  /** Function to format markdown text for the platform */
+  formatMarkdown: (text: string) => string;
+}
 
 function splitText(text: string, maxLength: number): string[] {
   const parts: string[] = [];
@@ -65,16 +76,23 @@ export function normalizePathForDisplay(filePath: string): string {
   return normalizedPath;
 }
 
-export function formatSummary(text: string, maxLength?: number): string[] {
-  return formatSummaryWithMode(text, config.bot.messageFormatMode, maxLength);
+export function formatSummary(
+  text: string,
+  maxLength?: number,
+  platformConfig?: PlatformFormatConfig,
+): string[] {
+  return formatSummaryWithMode(text, config.bot.messageFormatMode, maxLength, platformConfig);
 }
 
 export function formatSummaryWithMode(
   text: string,
   mode: MessageFormatMode,
   maxLength?: number,
+  platformConfig?: PlatformFormatConfig,
 ): string[] {
-  const effectiveMaxLength = maxLength ?? TELEGRAM_MESSAGE_LIMIT;
+  const defaultLimit = 4096;
+  const effectiveMaxLength = maxLength ?? platformConfig?.messageMaxLength ?? defaultLimit;
+  const formatMarkdownFn = platformConfig?.formatMarkdown;
 
   if (!text || text.trim().length === 0) {
     return [];
@@ -90,7 +108,9 @@ export function formatSummaryWithMode(
     }
 
     if (mode === "markdown") {
-      const converted = formatMarkdownForTelegram(trimmed);
+      // Use injected formatter, or Telegram as default
+      const formatter = formatMarkdownFn ?? TELEGRAM_FORMAT_CONFIG.formatMarkdown;
+      const converted = formatter(trimmed);
       const convertedParts = splitText(converted, effectiveMaxLength);
 
       for (const convertedPart of convertedParts) {
@@ -110,6 +130,13 @@ export function formatSummaryWithMode(
   }
 
   return formattedParts;
+}
+
+export function formatSummaryWithConfig(
+  text: string,
+  platformConfig: PlatformFormatConfig,
+): string[] {
+  return formatSummaryWithMode(text, config.bot.messageFormatMode, undefined, platformConfig);
 }
 
 function getToolDetails(tool: string, input?: { [key: string]: unknown }): string {

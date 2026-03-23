@@ -1,69 +1,160 @@
+import { parse as parseYaml } from "yaml";
 import { describe, expect, it } from "vitest";
-import { buildEnvFileContent, validateRuntimeEnvValues } from "../../src/runtime/bootstrap.js";
+import {
+  buildConfigYamlContent,
+  validateRuntimeConfigValues,
+} from "../../src/runtime/bootstrap.js";
 
 describe("runtime/bootstrap", () => {
-  it("validates required runtime env values", () => {
-    const result = validateRuntimeEnvValues({
-      TELEGRAM_BOT_TOKEN: "123456:abcdef",
-      TELEGRAM_ALLOWED_USER_ID: "123456789",
+  it("validates required runtime config values", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        token: "123456:abcdef",
+        allowedUserId: 123456789,
+      },
     });
 
     expect(result).toEqual({ isValid: true });
   });
 
-  it("fails validation for invalid user id", () => {
-    const result = validateRuntimeEnvValues({
-      TELEGRAM_BOT_TOKEN: "123456:abcdef",
-      TELEGRAM_ALLOWED_USER_ID: "0",
+  it("validates with string user id", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        token: "123456:abcdef",
+        allowedUserId: "123456789",
+      },
+    });
+
+    expect(result).toEqual({ isValid: true });
+  });
+
+  it("fails validation for missing token", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        allowedUserId: 123456789,
+      },
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.reason).toContain("TELEGRAM_ALLOWED_USER_ID");
+    expect(result.reason).toContain("telegram.token");
   });
 
-  it("updates only wizard keys and preserves custom keys", () => {
-    const existingContent = [
-      "CUSTOM_FLAG=enabled",
-      "BOT_LOCALE=en",
-      "OPENCODE_SERVER_USERNAME=old-user",
-      "OPENCODE_SERVER_PASSWORD=old-password",
-      "TELEGRAM_BOT_TOKEN=old",
-      "TELEGRAM_ALLOWED_USER_ID=1",
-      "OPENCODE_API_URL=http://localhost:4096",
-      "",
-    ].join("\n");
-
-    const updated = buildEnvFileContent(existingContent, {
-      BOT_LOCALE: "ru",
-      TELEGRAM_BOT_TOKEN: "new-token:value",
-      TELEGRAM_ALLOWED_USER_ID: "777",
-      OPENCODE_SERVER_USERNAME: "new-user",
+  it("fails validation for invalid user id", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        token: "123456:abcdef",
+        allowedUserId: 0,
+      },
     });
 
-    expect(updated).toContain("CUSTOM_FLAG=enabled");
-    expect(updated).toContain("OPENCODE_SERVER_USERNAME=new-user");
-    expect(updated).not.toContain("OPENCODE_SERVER_PASSWORD=");
-    expect(updated).toContain("BOT_LOCALE=ru");
-    expect(updated).toContain("TELEGRAM_BOT_TOKEN=new-token:value");
-    expect(updated).toContain("TELEGRAM_ALLOWED_USER_ID=777");
-    expect(updated).not.toContain("OPENCODE_API_URL=");
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain("telegram.allowedUserId");
   });
 
-  it("removes server password when wizard value is empty", () => {
-    const existingContent = [
-      "OPENCODE_SERVER_USERNAME=old-user",
-      "OPENCODE_SERVER_PASSWORD=old-password",
-      "",
-    ].join("\n");
-
-    const updated = buildEnvFileContent(existingContent, {
-      BOT_LOCALE: "en",
-      TELEGRAM_BOT_TOKEN: "token:value",
-      TELEGRAM_ALLOWED_USER_ID: "42",
-      OPENCODE_SERVER_USERNAME: "opencode",
+  it("fails validation for string zero user id", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        token: "123456:abcdef",
+        allowedUserId: "0",
+      },
     });
 
-    expect(updated).toContain("OPENCODE_SERVER_USERNAME=opencode");
-    expect(updated).not.toContain("OPENCODE_SERVER_PASSWORD=");
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain("telegram.allowedUserId");
+  });
+
+  it("fails validation for invalid api url", () => {
+    const result = validateRuntimeConfigValues({
+      telegram: {
+        token: "123456:abcdef",
+        allowedUserId: 123456789,
+      },
+      opencode: {
+        apiUrl: "not-a-url",
+      },
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.reason).toContain("opencode.apiUrl");
+  });
+
+  it("builds valid YAML with all wizard values", () => {
+    const yaml = buildConfigYamlContent({
+      telegram: {
+        token: "123456:ABCdefGHI",
+        allowedUserId: "777",
+      },
+      opencode: {
+        apiUrl: "http://localhost:9090",
+        username: "admin",
+        password: "secret",
+      },
+      bot: {
+        locale: "ru",
+      },
+    });
+
+    const parsed = parseYaml(yaml) as Record<string, unknown>;
+    const telegram = parsed.telegram as Record<string, unknown>;
+    const opencode = parsed.opencode as Record<string, unknown>;
+    const bot = parsed.bot as Record<string, unknown>;
+
+    expect(telegram.token).toBe("123456:ABCdefGHI");
+    expect(telegram.allowedUserId).toBe(777);
+    expect(opencode.apiUrl).toBe("http://localhost:9090");
+    expect(opencode.username).toBe("admin");
+    expect(opencode.password).toBe("secret");
+    expect(bot.locale).toBe("ru");
+  });
+
+  it("omits default opencode username and default bot locale", () => {
+    const yaml = buildConfigYamlContent({
+      telegram: {
+        token: "token:value",
+        allowedUserId: "42",
+      },
+      opencode: {
+        username: "opencode",
+      },
+      bot: {
+        locale: "en",
+      },
+    });
+
+    const parsed = parseYaml(yaml) as Record<string, unknown>;
+
+    expect(parsed.opencode).toBeUndefined();
+    expect(parsed.bot).toBeUndefined();
+  });
+
+  it("omits empty optional sections", () => {
+    const yaml = buildConfigYamlContent({
+      telegram: {
+        token: "token:value",
+        allowedUserId: "42",
+      },
+    });
+
+    const parsed = parseYaml(yaml) as Record<string, unknown>;
+    const telegram = parsed.telegram as Record<string, unknown>;
+
+    expect(telegram.token).toBe("token:value");
+    expect(telegram.allowedUserId).toBe(42);
+    expect(parsed.opencode).toBeUndefined();
+    expect(parsed.bot).toBeUndefined();
+  });
+
+  it("properly quotes tokens with colons in YAML output", () => {
+    const yaml = buildConfigYamlContent({
+      telegram: {
+        token: "123456:ABCdef:extra",
+        allowedUserId: "999",
+      },
+    });
+
+    // Re-parse should yield exact same token
+    const parsed = parseYaml(yaml) as Record<string, unknown>;
+    const telegram = parsed.telegram as Record<string, unknown>;
+    expect(telegram.token).toBe("123456:ABCdef:extra");
   });
 });

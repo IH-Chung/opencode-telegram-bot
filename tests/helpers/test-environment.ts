@@ -37,4 +37,18 @@ export function ensureTestEnvironment(): void {
       process.env[key] = value;
     }
   }
+
+  const configPath = path.join(process.env.OPENCODE_TELEGRAM_HOME!, "config.yaml");
+  if (!fs.existsSync(configPath)) {
+    const dummyConfig = `
+telegram:
+  token: "test-telegram-token"
+  allowedUserId: 123456789
+opencode:
+  apiUrl: "http://localhost:4096"
+server:
+  logLevel: "error"
+`;
+    fs.writeFileSync(configPath, dummyConfig, "utf-8");
+  }
 }

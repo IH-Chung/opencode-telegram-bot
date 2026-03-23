@@ -325,7 +325,7 @@ export const es: I18nDictionary = {
   "runtime.wizard.api_url_invalid":
     "Introduce una URL válida (http/https) o pulsa Enter para usar el valor por defecto.\n",
   "runtime.wizard.start": "Configuración de OpenCode Telegram Bot.\n",
-  "runtime.wizard.saved": "Configuración guardada:\n- {envPath}\n- {settingsPath}\n",
+  "runtime.wizard.saved": "Configuración guardada:\n- {configPath}\n- {settingsPath}\n",
   "runtime.wizard.not_configured_starting":
     "La aplicación aún no está configurada. Iniciando el asistente...\n",
   "runtime.wizard.tty_required":
@@ -383,13 +383,13 @@ export const es: I18nDictionary = {
   "legacy.models.empty": "📋 No hay modelos disponibles. Configura los proveedores en OpenCode.",
   "legacy.models.header": "📋 **Modelos disponibles:**\n\n",
   "legacy.models.no_provider_models": "  ⚠️ No hay modelos disponibles\n",
-  "legacy.models.env_hint": "💡 Para usar el modelo en .env:\n",
+  "legacy.models.env_hint": "💡 Para usar el modelo en config.yaml:\n",
   "legacy.models.error": "🔴 Ocurrió un error al cargar la lista de modelos.",
 
   "stt.recognizing": "🎤 Reconociendo audio...",
   "stt.recognized": "🎤 Reconocido:\n{text}",
   "stt.not_configured":
-    "🎤 El reconocimiento de voz no está configurado.\n\nConfigura STT_API_URL y STT_API_KEY en .env para habilitarlo.",
+    "🎤 El reconocimiento de voz no está configurado.\n\nConfigura stt.apiUrl y stt.apiKey en config.yaml para habilitarlo.",
   "stt.error": "🔴 No se pudo reconocer el audio: {error}",
   "stt.empty_result": "🎤 No se detectó voz en el mensaje de audio.",
 

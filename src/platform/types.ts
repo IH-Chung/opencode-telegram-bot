@@ -86,3 +86,23 @@ export interface PlatformAdapter {
   // Get a downloadable URL for a file by its platform file ID
   getFileUrl(fileId: string): Promise<string>;
 }
+
+/**
+ * Token information from AssistantMessage
+ */
+export interface TokensInfo {
+  input: number;
+  output: number;
+  reasoning: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+/**
+ * File change info from OpenCode session diff
+ */
+export interface FileChange {
+  file: string;
+  additions: number;
+  deletions: number;
+}

@@ -174,3 +174,12 @@ export function getAssistantParseMode(): "MarkdownV2" | undefined {
 
   return undefined;
 }
+
+/**
+ * Pre-built platform config for Telegram.
+ * Pass this to `formatSummaryWithConfig()` when calling from Telegram context.
+ */
+export const TELEGRAM_FORMAT_CONFIG = {
+  messageMaxLength: TELEGRAM_MESSAGE_LIMIT,
+  formatMarkdown: formatMarkdownForTelegram,
+} as const;

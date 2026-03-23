@@ -5,7 +5,7 @@ import { getRuntimeMode, type RuntimeMode } from "./mode.js";
 export interface RuntimePaths {
   mode: RuntimeMode;
   appHome: string;
-  envFilePath: string;
+  configFilePath: string;
   settingsFilePath: string;
   logsDirPath: string;
   runDirPath: string;
@@ -47,7 +47,7 @@ export function getRuntimePaths(): RuntimePaths {
   return {
     mode,
     appHome,
-    envFilePath: path.join(appHome, ".env"),
+    configFilePath: path.join(appHome, "config.yaml"),
     settingsFilePath: path.join(appHome, "settings.json"),
     logsDirPath: path.join(appHome, "logs"),
     runDirPath: path.join(appHome, "run"),

@@ -36,7 +36,7 @@ export async function modelsCommand(ctx: CommandContext<Context>) {
     }
 
     message += t("legacy.models.env_hint");
-    message += "```\nOPENCODE_MODEL_PROVIDER=<provider.id>\nOPENCODE_MODEL_ID=<model.id>\n```";
+    message += "```\nopencode:\n  modelProvider: <provider.id>\n  modelId: <model.id>\n```";
 
     await ctx.reply(message, { parse_mode: "Markdown" });
   } catch (error) {

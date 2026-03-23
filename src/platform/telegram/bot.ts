@@ -50,7 +50,7 @@ import { keyboardManager } from "./keyboard-manager.js";
 import { subscribeToEvents } from "../../opencode/events.js";
 import { summaryAggregator } from "../../summary/aggregator.js";
 import { formatSummary, formatToolInfo } from "../../summary/formatter.js";
-import { getAssistantParseMode, TELEGRAM_MESSAGE_LIMIT } from "./formatter.js";
+import { getAssistantParseMode, TELEGRAM_FORMAT_CONFIG } from "./formatter.js";
 import { ToolMessageBatcher } from "../../summary/tool-message-batcher.js";
 import { getCurrentSession } from "../../session/manager.js";
 import { ingestSessionInfoForCache } from "../../session/cache-manager.js";
@@ -115,7 +115,7 @@ function prepareDocumentCaption(caption: string): string {
 
 const toolMessageBatcher = new ToolMessageBatcher({
   intervalSeconds: 5,
-  messageMaxLength: TELEGRAM_MESSAGE_LIMIT,
+  messageMaxLength: TELEGRAM_FORMAT_CONFIG.messageMaxLength,
   sendText: async (sessionId, text) => {
     if (!botInstance || !chatIdInstance) {
       return;
@@ -248,7 +248,7 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     await toolMessageBatcher.flushSession(sessionId, "assistant_message_completed");
 
     try {
-      const parts = formatSummary(messageText);
+      const parts = formatSummary(messageText, undefined, TELEGRAM_FORMAT_CONFIG);
       const assistantParseMode = getAssistantParseMode();
 
       logger.debug(
@@ -637,7 +637,7 @@ function startPollerForSession(sessionId: string, directory: string): void {
   startMessagePolling(sessionId, directory, (polledSessionId, messageText) => {
     if (!botInstance || !chatIdInstance) return;
 
-    const parts = formatSummary(messageText);
+    const parts = formatSummary(messageText, undefined, TELEGRAM_FORMAT_CONFIG);
     const parseMode = getAssistantParseMode();
     const bot = botInstance;
     const chatId = chatIdInstance;

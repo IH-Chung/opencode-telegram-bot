@@ -1,0 +1,63 @@
+# OpenCode Telegram Bot Configuration
+# Copy this file to config.yaml and fill in your values.
+# Values with colons (like bot tokens) must be quoted.
+
+# Telegram settings (required)
+telegram:
+  # Bot token from @BotFather (e.g., "123456:ABCdef...")
+  token: ""
+  # Your numeric Telegram user ID (from @userinfobot)
+  allowedUserId: 0
+  # Proxy URL for Telegram API (optional)
+  # Supports socks5://, socks4://, http://, https:// protocols
+  # Examples:
+  #   proxyUrl: "socks5://proxy.example.com:1080"
+  #   proxyUrl: "socks5://user:password@proxy.example.com:1080"
+  #   proxyUrl: "http://proxy.example.com:8080"
+  # proxyUrl: ""
+
+# OpenCode server connection (optional)
+# opencode:
+#   apiUrl: "http://localhost:4096"
+#   username: "opencode"
+#   password: ""
+
+# Server settings (optional)
+# server:
+#   # Logging level: debug, info, warn, error
+#   logLevel: "info"
+
+# Bot behavior (optional)
+# bot:
+#   # UI language: en, de, es, ru, zh
+#   locale: "en"
+#   # Sessions per page in /sessions
+#   sessionsListLimit: 10
+#   # Projects per page in /projects
+#   projectsListLimit: 10
+#   # Models per page in model picker
+#   modelsListLimit: 10
+#   # Service message batching interval in seconds (thinking + tool calls)
+#   # Recommended: keep >=2 to reduce risk of hitting Telegram rate limits
+#   # 0 = send immediately (can hit rate limits with many tool calls)
+#   serviceMessagesIntervalSec: 5
+#   # Hide thinking indicator messages
+#   hideThinkingMessages: false
+#   # Hide tool call service messages
+#   hideToolCallMessages: false
+#   # Assistant message formatting: "markdown" or "raw"
+#   messageFormatMode: "markdown"
+
+# Code file settings (optional)
+# files:
+#   # Maximum file size in KB to send as document
+#   maxFileSizeKb: 100
+
+# Speech-to-Text / Voice Recognition (optional)
+# Enable voice message transcription by setting a Whisper-compatible API URL.
+# Works with OpenAI, Groq, or any Whisper-compatible endpoint.
+# stt:
+#   apiUrl: ""
+#   apiKey: ""
+#   model: "whisper-large-v3-turbo"
+#   language: ""

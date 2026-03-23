@@ -123,8 +123,7 @@ export function getLocale(): Locale {
     return runtimeLocaleOverride;
   }
 
-  const localeFromEnv = process.env.BOT_LOCALE;
-  return normalizeLocale(localeFromEnv, DEFAULT_LOCALE);
+  return DEFAULT_LOCALE;
 }
 
 export function setRuntimeLocale(locale: Locale): void {

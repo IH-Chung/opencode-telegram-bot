@@ -6,8 +6,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment
-.env
+# Configuration
+config.yaml
+.env.bak
 
 # OS
 .DS_Store

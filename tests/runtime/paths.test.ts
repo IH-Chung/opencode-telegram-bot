@@ -31,7 +31,7 @@ describe("runtime/paths", () => {
 
     expect(runtimePaths.mode).toBe("sources");
     expect(runtimePaths.appHome).toBe(process.cwd());
-    expect(runtimePaths.envFilePath).toBe(path.join(process.cwd(), ".env"));
+    expect(runtimePaths.configFilePath).toBe(path.join(process.cwd(), "config.yaml"));
     expect(runtimePaths.settingsFilePath).toBe(path.join(process.cwd(), "settings.json"));
   });
 

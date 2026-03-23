@@ -1,24 +1,7 @@
-import type { PlatformMessageRef } from "../types.js";
+import type { PlatformMessageRef, FileChange } from "../types.js";
 
-/**
- * Token information from AssistantMessage
- */
-export interface TokensInfo {
-  input: number;
-  output: number;
-  reasoning: number;
-  cacheRead: number;
-  cacheWrite: number;
-}
-
-/**
- * File change info from OpenCode session diff
- */
-export interface FileChange {
-  file: string;
-  additions: number;
-  deletions: number;
-}
+// Re-export types that moved to platform/types.ts for backward compatibility
+export type { FileChange, TokensInfo } from "../types.js";
 
 /**
  * State of the pinned status message

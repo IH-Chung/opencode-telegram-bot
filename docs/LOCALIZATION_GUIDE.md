@@ -68,7 +68,7 @@ Update `README.md` for every new locale:
 - language list
 - localization section
 
-Update `.env.example` add new language to supported languages list
+Update `config.yaml.example` add new language to supported languages list
 
 ## 4) Verify behavior
 
@@ -82,7 +82,7 @@ npm test
 
 Manual checks:
 
-1. Set `BOT_LOCALE=<locale-code>` in `.env` and start the bot.
+1. Set `bot.locale: <locale-code>` in `config.yaml` and start the bot.
 2. Confirm command descriptions and user-facing texts use the new language.
 3. Run the setup wizard (`opencode-telegram config`) and verify:
    - new language appears in selection list
@@ -107,4 +107,4 @@ Relevant test files if needed:
 - [ ] Added locale entry to `LOCALE_DEFINITIONS`
 - [ ] Updated `README.md` (language list and localization section)
 - [ ] Ran `npm run build`, `npm run lint`, `npm test`
-- [ ] Manually validated `BOT_LOCALE` and wizard language selection
+- [ ] Manually validated `bot.locale` and wizard language selection

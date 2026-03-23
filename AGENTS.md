@@ -27,7 +27,7 @@ It lets a user run and monitor coding tasks on a local machine through Telegram.
 - **Package manager:** npm
 - **Module system:** ESM (`"type": "module"`, NodeNext resolution)
 - **Build:** `tsc` (output to `dist/`)
-- **Configuration:** environment variables (`.env` via dotenv)
+- **Configuration:** YAML (`config.yaml` via `yaml`)
 - **Logging:** custom level-based logger (`debug`, `info`, `warn`, `error`)
 
 ### Core dependencies
@@ -37,7 +37,7 @@ It lets a user run and monitor coding tasks on a local machine through Telegram.
 | `grammy`               | Telegram Bot API framework (https://grammy.dev/) |
 | `@grammyjs/menu`       | Inline keyboards and menus                       |
 | `@opencode-ai/sdk`     | Official OpenCode Server SDK (v2 API)            |
-| `dotenv`               | Environment variable loading                     |
+| `yaml`                 | YAML configuration loading                       |
 | `better-sqlite3`       | Session directory cache fallback                 |
 | `socks-proxy-agent`    | SOCKS proxy support for Telegram API             |
 | `https-proxy-agent`    | HTTP/HTTPS proxy support for Telegram API        |
@@ -139,7 +139,7 @@ Telegram Bot API -> Telegram User
 1. src/index.ts or src/cli.ts
 2. resolveRuntimeMode() — "sources" (git repo) or "installed" (npm global)
 3. setRuntimeMode() — sets env var OPENCODE_TELEGRAM_RUNTIME_MODE
-4. [if installed] ensureRuntimeConfigForStart() — runs setup wizard if .env missing
+4. [if installed] ensureRuntimeConfigForStart() — runs setup wizard if config.yaml missing
 5. startBotApp():
    a. loadSettings() — read settings.json
    b. processManager.initialize() — restore PID if previously running
@@ -159,7 +159,7 @@ Telegram Bot API -> Telegram User
 src/
   index.ts                  — Entry point for npm/npx execution (sources mode)
   cli.ts                    — CLI entry point (#!/usr/bin/env node, installed mode)
-  config.ts                 — Centralized config loader from .env
+  config.ts                 — Centralized config loader from config.yaml
 
   app/
     start-bot-app.ts        — Application bootstrap and initialization
@@ -272,7 +272,7 @@ src/
 
   runtime/
     mode.ts                 — Runtime mode resolver (sources vs installed), --mode CLI flag parsing
-    paths.ts                — Platform-aware path resolver (appHome, .env, settings.json, logs, run dirs)
+    paths.ts                — Platform-aware path resolver (appHome, config.yaml, settings.json, logs, run dirs)
     bootstrap.ts            — Interactive setup wizard (locale, token, user ID, API URL, credentials)
 
   i18n/
@@ -626,7 +626,7 @@ Follow [docs/LOCALIZATION_GUIDE.md](./docs/LOCALIZATION_GUIDE.md):
 
 1. Create `src/i18n/<locale>.ts` implementing all keys from `en.ts`.
 2. Import and register in `src/i18n/index.ts` (add to `LOCALE_DEFINITIONS`).
-3. Update `README.md` and `.env.example`.
+3. Update `README.md` and `config.yaml.example`.
 4. Run build + lint + test.
 
 ---
@@ -667,29 +667,30 @@ npm run build         # TypeScript compilation
 
 ## Configuration
 
-### Environment variables
+### Configuration (config.yaml)
 
-| Variable                        | Required | Default                  | Purpose                              |
-| ------------------------------- | :------: | ------------------------ | ------------------------------------ |
-| `TELEGRAM_BOT_TOKEN`            |   Yes    | —                        | Bot token from @BotFather            |
-| `TELEGRAM_ALLOWED_USER_ID`      |   Yes    | —                        | Numeric Telegram user ID             |
-| `TELEGRAM_PROXY_URL`            |    No    | —                        | Proxy for Telegram API (socks5/http) |
-| `OPENCODE_API_URL`              |    No    | `http://localhost:4096`  | OpenCode server URL                  |
-| `OPENCODE_SERVER_USERNAME`      |    No    | `opencode`               | Server auth username                 |
-| `OPENCODE_SERVER_PASSWORD`      |    No    | —                        | Server auth password                 |
-| `BOT_LOCALE`                    |    No    | `en`                     | Bot UI language (en/de/es/ru/zh)     |
-| `SESSIONS_LIST_LIMIT`           |    No    | `10`                     | Sessions per page                    |
-| `PROJECTS_LIST_LIMIT`           |    No    | `10`                     | Projects per page                    |
-| `SERVICE_MESSAGES_INTERVAL_SEC` |    No    | `5`                      | Tool message batching interval       |
-| `HIDE_THINKING_MESSAGES`        |    No    | `false`                  | Hide thinking indicators             |
-| `HIDE_TOOL_CALL_MESSAGES`       |    No    | `false`                  | Hide tool call messages              |
-| `MESSAGE_FORMAT_MODE`           |    No    | `markdown`               | `markdown` or `raw`                  |
-| `CODE_FILE_MAX_SIZE_KB`         |    No    | `100`                    | Max file size for document sending   |
-| `STT_API_URL`                   |    No    | —                        | Whisper-compatible API base URL      |
-| `STT_API_KEY`                   |    No    | —                        | STT API key                          |
-| `STT_MODEL`                     |    No    | `whisper-large-v3-turbo` | STT model name                       |
-| `STT_LANGUAGE`                  |    No    | —                        | Language hint for STT                |
-| `LOG_LEVEL`                     |    No    | `info`                   | Log level                            |
+| Key                              | Required | Default                  | Purpose                              |
+| -------------------------------- | :------: | ------------------------ | ------------------------------------ |
+| `telegram.token`                 |   Yes    | —                        | Bot token from @BotFather            |
+| `telegram.allowedUserId`         |   Yes    | —                        | Numeric Telegram user ID             |
+| `telegram.proxyUrl`              |    No    | —                        | Proxy for Telegram API (socks5/http) |
+| `opencode.apiUrl`                |    No    | `http://localhost:4096`  | OpenCode server URL                  |
+| `opencode.username`              |    No    | `opencode`               | Server auth username                 |
+| `opencode.password`              |    No    | —                        | Server auth password                 |
+| `bot.locale`                     |    No    | `en`                     | Bot UI language (en/de/es/ru/zh)     |
+| `bot.sessionsListLimit`          |    No    | `10`                     | Sessions per page                    |
+| `bot.projectsListLimit`          |    No    | `10`                     | Projects per page                    |
+| `bot.modelsListLimit`            |    No    | `10`                     | Models per page                      |
+| `bot.serviceMessagesIntervalSec` |    No    | `5`                      | Tool message batching interval       |
+| `bot.hideThinkingMessages`       |    No    | `false`                  | Hide thinking indicators             |
+| `bot.hideToolCallMessages`       |    No    | `false`                  | Hide tool call messages              |
+| `bot.messageFormatMode`          |    No    | `markdown`               | `markdown` or `raw`                  |
+| `files.maxFileSizeKb`            |    No    | `100`                    | Max file size for document sending   |
+| `stt.apiUrl`                     |    No    | —                        | Whisper-compatible API base URL      |
+| `stt.apiKey`                     |    No    | —                        | STT API key                          |
+| `stt.model`                      |    No    | `whisper-large-v3-turbo` | STT model name                       |
+| `stt.language`                   |    No    | —                        | Language hint for STT                |
+| `server.logLevel`                |    No    | `info`                   | Log level                            |
 
 ### Runtime modes
 
@@ -700,9 +701,9 @@ npm run build         # TypeScript compilation
 
 ### Platform paths (installed mode)
 
-- **Windows:** `%APPDATA%\opencode-telegram-bot\`
-- **macOS:** `~/Library/Application Support/opencode-telegram-bot/`
-- **Linux:** `~/.config/opencode-telegram-bot/`
+- **Windows:** `%APPDATA%\opencode-telegram-bot\config.yaml`
+- **macOS:** `~/Library/Application Support/opencode-telegram-bot/config.yaml`
+- **Linux:** `~/.config/opencode-telegram-bot/config.yaml`
 
 Override with `OPENCODE_TELEGRAM_HOME` env var.
 
