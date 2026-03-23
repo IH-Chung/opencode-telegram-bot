@@ -54,7 +54,7 @@ In `LOCALE_DEFINITIONS`, add a new object:
 
 Example fields:
 
-- `code`: short locale code used in `BOT_LOCALE` (for example `en`, `ru`, etc.)
+- `code`: short locale code used in `bot.locale` (for example `en`, `ru`, etc.)
 - `label`: display name shown in setup wizard language selection
 - `dateLocale`: locale used by `toLocaleDateString` (for example `en-US`, `ru-RU`)
 - `dictionary`: the imported translation object

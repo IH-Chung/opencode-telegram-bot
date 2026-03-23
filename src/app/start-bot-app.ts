@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { createBot, autoSubscribeEvents } from "../bot/index.js";
+import { createPlatformBot } from "../platform/index.js";
 import { config } from "../config.js";
 import { loadSettings } from "../settings/manager.js";
 import { processManager } from "../process/manager.js";
@@ -30,29 +30,17 @@ export async function startBotApp(): Promise<void> {
 
   logger.info(`Starting OpenCode Telegram Bot v${version}...`);
   logger.info(`Config loaded from ${runtimePaths.configFilePath}`);
-  logger.info(`Allowed User ID: ${config.telegram.allowedUserId}`);
   logger.debug(`[Runtime] Application start mode: ${mode}`);
+
+  if (config.platform === "telegram") {
+    logger.info(`Allowed User ID: ${config.telegram.allowedUserId}`);
+  }
 
   await loadSettings();
   await processManager.initialize();
   await reconcileStoredModelSelection();
   await warmupSessionDirectoryCache();
 
-  const bot = createBot();
-
-  const webhookInfo = await bot.api.getWebhookInfo();
-  if (webhookInfo.url) {
-    logger.info(`[Bot] Webhook detected: ${webhookInfo.url}, removing...`);
-    await bot.api.deleteWebhook();
-    logger.info("[Bot] Webhook removed, switching to long polling");
-  }
-
-  // Auto-subscribe to SSE events for saved project (enables GUI→Telegram sync at startup)
-  await autoSubscribeEvents(bot);
-
-  await bot.start({
-    onStart: (botInfo) => {
-      logger.info(`Bot @${botInfo.username} started!`);
-    },
-  });
+  const platformBot = createPlatformBot(config.platform);
+  await platformBot.start();
 }
