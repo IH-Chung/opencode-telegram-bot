@@ -1,11 +1,11 @@
 # OpenCode Telegram/Discord Bot Configuration
 # Copy this file to config.yaml and fill in your values.
 # Values with colons (like bot tokens) must be quoted.
-#
-# Platform selection: Set platform: telegram or platform: discord below.
-# Default is telegram. See Discord section below for Discord configuration.
 
-# Telegram settings (required when PLATFORM=telegram)
+# Platform: "telegram" (default) or "discord"
+platform: telegram
+
+# Telegram settings (required when platform: telegram)
 telegram:
   # Bot token from @BotFather (e.g., "123456:ABCdef...")
   token: ""
@@ -66,7 +66,7 @@ telegram:
 #   language: ""
 
 # Discord platform settings (required when platform: discord)
-# Set platform: discord above and configure these values.
+# Change platform: above to "discord" and uncomment these values.
 # discord:
 #   # Bot token from Discord Developer Portal (https://discord.com/developers/applications)
 #   token: ""
