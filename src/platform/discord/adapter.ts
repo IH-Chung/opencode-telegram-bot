@@ -57,9 +57,17 @@ export class DiscordAdapter implements PlatformAdapter {
     return channel as TextChannel | DMChannel;
   }
 
-  async sendMessage(text: string, _options?: PlatformMessageOptions): Promise<PlatformMessageRef> {
+  async sendMessage(text: string, options?: PlatformMessageOptions): Promise<PlatformMessageRef> {
     const channel = await this.getTextChannel();
-    const msg = await channel.send({ content: text });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sendOptions: any = { content: text };
+
+    // Support ActionRow components via replyMarkup for Discord buttons/select menus
+    if (options?.replyMarkup) {
+      sendOptions.components = options.replyMarkup as unknown[];
+    }
+
+    const msg = await channel.send(sendOptions);
     return msg.id;
   }
 

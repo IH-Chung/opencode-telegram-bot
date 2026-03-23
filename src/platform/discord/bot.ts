@@ -1,0 +1,443 @@
+import { Client, GatewayIntentBits, Partials, Events, ChannelType } from "discord.js";
+import { DiscordAdapter } from "./adapter.js";
+import {
+  isAuthorizedDiscordUser,
+  setSessionOwner,
+  clearSessionOwner,
+  getSessionOwner,
+} from "./middleware/auth.js";
+import { summaryAggregator } from "../../summary/aggregator.js";
+import { ToolMessageBatcher } from "../../summary/tool-message-batcher.js";
+import { formatSummaryWithConfig } from "../../summary/formatter.js";
+import { DISCORD_FORMAT_CONFIG } from "./formatter.js";
+import { discordPinnedMessageManager } from "./pinned-manager.js";
+import { registerSlashCommands } from "./commands/register.js";
+import { subscribeToEvents, stopEventListening } from "../../opencode/events.js";
+import { getCurrentProject, getCurrentSession } from "../../settings/manager.js";
+import { logger } from "../../utils/logger.js";
+import { t } from "../../i18n/index.js";
+import { safeBackgroundTask } from "../../utils/safe-background-task.js";
+import { opencodeClient } from "../../opencode/client.js";
+import { getStoredAgent } from "../../agent/manager.js";
+import { getStoredModel } from "../../model/manager.js";
+import { ingestSessionInfoForCache } from "../../session/cache-manager.js";
+import { setCurrentSession } from "../../session/manager.js";
+import { clearAllInteractionState } from "../../interaction/cleanup.js";
+import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2";
+import { formatErrorDetails } from "../../utils/error-format.js";
+
+// Command handlers
+import { handleStatusCommand } from "./commands/status.js";
+import { handleNewCommand } from "./commands/new.js";
+import { handleAbortCommand } from "./commands/abort.js";
+import { handleSessionsCommand } from "./commands/sessions.js";
+import { handleProjectsCommand } from "./commands/projects.js";
+import { handleRenameCommand } from "./commands/rename.js";
+import { handleCommandsCommand } from "./commands/commands.js";
+import { handleSkillsCommand } from "./commands/skills.js";
+import { handleOpencodeStartCommand } from "./commands/opencode-start.js";
+import { handleOpencodeStopCommand } from "./commands/opencode-stop.js";
+import { handleHelpCommand } from "./commands/help.js";
+import { handleModelCommand } from "./commands/model.js";
+import { handleAgentCommand } from "./commands/agent.js";
+import { handleVariantCommand } from "./commands/variant.js";
+
+let clientInstance: Client | null = null;
+let adapterInstance: DiscordAdapter | null = null;
+let typingInterval: ReturnType<typeof setInterval> | null = null;
+let eventSubscriptionAbortController: AbortController | null = null;
+let toolMessageBatcherInstance: ToolMessageBatcher | null = null;
+
+/**
+ * Start the typing indicator — sends typing every 8 seconds (Discord typing expires at 10s).
+ */
+function startTypingIndicator(): void {
+  if (!adapterInstance) return;
+  stopTypingIndicator();
+  adapterInstance.sendTyping().catch(() => {
+    // Fire and forget
+  });
+  typingInterval = setInterval(() => {
+    if (adapterInstance) {
+      adapterInstance.sendTyping().catch(() => {
+        // Fire and forget
+      });
+    }
+  }, 8000);
+}
+
+/**
+ * Stop the typing indicator.
+ */
+function stopTypingIndicator(): void {
+  if (typingInterval) {
+    clearInterval(typingInterval);
+    typingInterval = null;
+  }
+}
+
+/**
+ * Wire all summaryAggregator callbacks through the DiscordAdapter.
+ */
+function setupSummaryAggregatorCallbacks(): void {
+  if (!adapterInstance) return;
+
+  toolMessageBatcherInstance = new ToolMessageBatcher({
+    intervalSeconds: 5,
+    messageMaxLength: DISCORD_FORMAT_CONFIG.messageMaxLength,
+    sendText: async (sessionId, text) => {
+      const currentSession = getCurrentSession();
+      if (!currentSession || currentSession.id !== sessionId) return;
+      const parts = formatSummaryWithConfig(text, DISCORD_FORMAT_CONFIG);
+      for (const part of parts) {
+        await adapterInstance!.sendMessage(part);
+      }
+    },
+    sendFile: async (sessionId, fileData) => {
+      const currentSession = getCurrentSession();
+      if (!currentSession || currentSession.id !== sessionId) return;
+      await adapterInstance!.sendDocument(Buffer.from(fileData.buffer), {
+        caption: fileData.caption,
+      });
+    },
+  });
+
+  summaryAggregator.setOnComplete(async (sessionId, messageText) => {
+    stopTypingIndicator();
+    await toolMessageBatcherInstance?.flushSession(sessionId, "assistant_message_completed");
+    const parts = formatSummaryWithConfig(messageText, DISCORD_FORMAT_CONFIG);
+    for (const part of parts) {
+      await adapterInstance!.sendMessage(part);
+    }
+    clearSessionOwner(); // Session complete — unlock
+  });
+
+  summaryAggregator.setOnTool(async (toolInfo) => {
+    const currentSession = getCurrentSession();
+    if (!currentSession || currentSession.id !== toolInfo.sessionId) return;
+    const message = `💻 ${toolInfo.tool}`;
+    toolMessageBatcherInstance?.enqueue(toolInfo.sessionId, message);
+  });
+
+  summaryAggregator.setOnToolFile(async (fileInfo) => {
+    const currentSession = getCurrentSession();
+    if (!currentSession || currentSession.id !== fileInfo.sessionId) return;
+    toolMessageBatcherInstance?.enqueueFile(fileInfo.sessionId, fileInfo.fileData);
+  });
+
+  summaryAggregator.setOnThinking(async (sessionId) => {
+    startTypingIndicator();
+    const currentSession = getCurrentSession();
+    if (!currentSession || currentSession.id !== sessionId) return;
+    await adapterInstance!.sendMessage(t("bot.thinking"));
+  });
+
+  summaryAggregator.setOnSessionError(async (sessionId, error) => {
+    stopTypingIndicator();
+    await adapterInstance!.sendMessage(t("bot.session_error", { message: error }));
+    clearSessionOwner();
+  });
+
+  summaryAggregator.setOnSessionRetry(async (retryInfo) => {
+    await adapterInstance!.sendMessage(t("bot.session_retry", { message: retryInfo.message }));
+  });
+
+  summaryAggregator.setOnTokens(async (tokens) => {
+    await discordPinnedMessageManager.onTokensUpdated(tokens.input + tokens.output, 0);
+  });
+
+  summaryAggregator.setOnSessionDiff(async (_sessionId, fileChanges) => {
+    await discordPinnedMessageManager.onFilesChanged(fileChanges);
+  });
+
+  summaryAggregator.setOnCleared(() => {
+    toolMessageBatcherInstance?.clearAll("summary_aggregator_clear");
+  });
+}
+
+/**
+ * Check if session is busy before sending a prompt.
+ */
+async function isSessionBusy(sessionId: string, directory: string): Promise<boolean> {
+  try {
+    const { data } = await opencodeClient.session.status({ directory });
+    if (!data) return false;
+    const sessionStatus = (data as Record<string, { type?: string }>)[sessionId];
+    return sessionStatus?.type === "busy";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Send a user prompt to OpenCode (fire-and-forget).
+ */
+async function sendPrompt(
+  adapter: DiscordAdapter,
+  text: string,
+  fileParts: FilePartInput[] = [],
+): Promise<void> {
+  const project = getCurrentProject();
+  if (!project) {
+    await adapter.sendMessage(t("bot.project_not_selected"));
+    return;
+  }
+
+  let currentSession = getCurrentSession();
+
+  // Session/project mismatch check
+  if (currentSession && currentSession.directory !== project.worktree) {
+    logger.warn(
+      `[Discord] Session/project mismatch: sessionDirectory=${currentSession.directory}, projectDirectory=${project.worktree}`,
+    );
+    stopEventListening();
+    summaryAggregator.clear();
+    clearAllInteractionState("session_mismatch_reset");
+    await adapter.sendMessage(t("bot.session_reset_project_mismatch"));
+    return;
+  }
+
+  if (!currentSession) {
+    await adapter.sendMessage(t("bot.creating_session"));
+
+    const { data: session, error } = await opencodeClient.session.create({
+      directory: project.worktree,
+    });
+
+    if (error || !session) {
+      await adapter.sendMessage(t("bot.create_session_error"));
+      return;
+    }
+
+    logger.info(`[Discord] Created new session: id=${session.id}, title="${session.title}"`);
+
+    currentSession = {
+      id: session.id,
+      title: session.title,
+      directory: project.worktree,
+    };
+    setCurrentSession(currentSession);
+    await ingestSessionInfoForCache(session);
+    await discordPinnedMessageManager.onSessionChanged(
+      session.id,
+      session.title,
+      project.name || project.worktree,
+    );
+    await adapter.sendMessage(t("bot.session_created", { title: session.title }));
+  } else {
+    logger.info(`[Discord] Using existing session: ${currentSession.id}`);
+    // Ensure pinned message exists
+    if (!discordPinnedMessageManager.getState().messageRef) {
+      await discordPinnedMessageManager.onSessionChanged(
+        currentSession.id,
+        currentSession.title,
+        project.name || project.worktree,
+      );
+    }
+  }
+
+  await autoSubscribeDiscordEvents(clientInstance!);
+  summaryAggregator.setSession(currentSession.id);
+
+  const sessionIsBusy = await isSessionBusy(currentSession.id, currentSession.directory);
+  if (sessionIsBusy) {
+    await adapter.sendMessage(t("bot.session_busy"));
+    return;
+  }
+
+  const currentAgent = getStoredAgent();
+  const storedModel = getStoredModel();
+
+  // Build parts
+  const parts: Array<TextPartInput | FilePartInput> = [];
+  if (text.trim().length > 0) {
+    parts.push({ type: "text", text });
+  }
+  parts.push(...fileParts);
+
+  const promptOptions: {
+    sessionID: string;
+    directory: string;
+    parts: Array<TextPartInput | FilePartInput>;
+    agent?: string;
+    model?: { providerID: string; modelID: string };
+    variant?: string;
+  } = {
+    sessionID: currentSession.id,
+    directory: currentSession.directory,
+    parts,
+    agent: currentAgent,
+  };
+
+  if (storedModel.providerID && storedModel.modelID) {
+    promptOptions.model = {
+      providerID: storedModel.providerID,
+      modelID: storedModel.modelID,
+    };
+    if (storedModel.variant) {
+      promptOptions.variant = storedModel.variant;
+    }
+  }
+
+  safeBackgroundTask({
+    taskName: "session.prompt",
+    task: () => opencodeClient.session.prompt(promptOptions),
+    onSuccess: (result) => {
+      const promptError = (result as { error?: unknown })?.error;
+      if (promptError) {
+        const details = formatErrorDetails(promptError as Error, 6000);
+        logger.error("[Discord] session.prompt error:", details);
+        void adapter.sendMessage(t("bot.prompt_send_error")).catch(() => {});
+      }
+    },
+    onError: (err) => {
+      const details = formatErrorDetails(err as Error, 6000);
+      logger.error("[Discord] session.prompt background failure:", details);
+      void adapter.sendMessage(t("bot.prompt_send_error")).catch(() => {});
+    },
+  });
+}
+
+/**
+ * Create the Discord bot client and register all event handlers.
+ */
+export function createDiscordBot(): Client {
+  const client = new Client({
+    intents: [
+      GatewayIntentBits.Guilds,
+      GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.DirectMessages,
+      GatewayIntentBits.MessageContent,
+    ],
+    partials: [Partials.Channel],
+  });
+
+  clientInstance = client;
+  adapterInstance = new DiscordAdapter(client);
+  discordPinnedMessageManager.initialize(adapterInstance);
+  setupSummaryAggregatorCallbacks();
+
+  client.on(Events.ClientReady, async (readyClient) => {
+    logger.info(`[Discord] Logged in as ${readyClient.user.tag}`);
+    await registerSlashCommands(readyClient.application.id);
+  });
+
+  client.on(Events.InteractionCreate, async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const commandName = interaction.commandName;
+
+    switch (commandName) {
+      case "status":
+        return handleStatusCommand(interaction);
+      case "new":
+        return handleNewCommand(interaction, {
+          ensureEventSubscription: (_directory: string) =>
+            autoSubscribeDiscordEvents(clientInstance!),
+        });
+      case "abort":
+        return handleAbortCommand(interaction);
+      case "sessions":
+        return handleSessionsCommand(interaction);
+      case "projects":
+        return handleProjectsCommand(interaction);
+      case "rename":
+        return handleRenameCommand(interaction);
+      case "commands":
+        return handleCommandsCommand(interaction);
+      case "skills":
+        return handleSkillsCommand(interaction);
+      case "opencode_start":
+        return handleOpencodeStartCommand(interaction);
+      case "opencode_stop":
+        return handleOpencodeStopCommand(interaction);
+      case "help":
+        return handleHelpCommand(interaction);
+      case "model":
+        return handleModelCommand(interaction);
+      case "agent":
+        return handleAgentCommand(interaction);
+      case "variant":
+        return handleVariantCommand(interaction);
+      default:
+        await interaction.reply({ content: "Unknown command", ephemeral: true });
+    }
+  });
+
+  client.on(Events.MessageCreate, async (message) => {
+    // Ignore bots
+    if (message.author.bot) return;
+
+    const adapter = adapterInstance!;
+    adapter.setChatId(message.channelId);
+
+    // Auth check
+    if (!isAuthorizedDiscordUser(message)) {
+      const isDM = message.channel.type === ChannelType.DM;
+      await message.reply(
+        isDM ? t("discord.auth.unauthorized_dm") : t("discord.auth.unauthorized_channel"),
+      );
+      return;
+    }
+
+    // Session owner lock
+    const currentOwner = getSessionOwner();
+    if (currentOwner && currentOwner !== message.author.id) {
+      await message.reply(t("discord.auth.session_busy", { user: `<@${currentOwner}>` }));
+      return;
+    }
+
+    // Set this user as the operator
+    setSessionOwner(message.author.id);
+
+    const text = message.content.trim();
+    if (!text) return;
+
+    // Fire-and-forget prompt processing
+    safeBackgroundTask({
+      taskName: "discord.prompt",
+      task: async () => {
+        try {
+          await sendPrompt(adapter, text);
+        } catch (err) {
+          logger.error("[Discord] Prompt error", err);
+          await adapter.sendMessage(t("error.generic")).catch(() => {});
+        }
+      },
+      onError: (err: unknown) => {
+        logger.error("[Discord] Prompt background error", err);
+      },
+    });
+  });
+
+  return client;
+}
+
+/**
+ * Subscribe to SSE events for the current project.
+ * Idempotent — safe to call multiple times.
+ */
+export async function autoSubscribeDiscordEvents(_client: Client): Promise<void> {
+  const project = getCurrentProject();
+  if (!project) return;
+
+  // Cancel previous subscription if any
+  if (eventSubscriptionAbortController) {
+    eventSubscriptionAbortController.abort();
+  }
+
+  const abort = new AbortController();
+  eventSubscriptionAbortController = abort;
+
+  safeBackgroundTask({
+    taskName: "discord.sse",
+    task: async () => {
+      await subscribeToEvents(project.worktree, (event) => {
+        summaryAggregator.processEvent(event);
+      });
+    },
+    onError: (err: unknown) => {
+      logger.error("[Discord] SSE subscription error", err);
+    },
+  });
+}
