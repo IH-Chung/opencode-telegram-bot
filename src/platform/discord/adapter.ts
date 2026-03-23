@@ -1,4 +1,4 @@
-import { ChannelType, type DMChannel, type TextChannel } from "discord.js";
+import { ChannelType, type DMChannel, type EmbedBuilder, type TextChannel } from "discord.js";
 import { logger } from "../../utils/logger.js";
 import type {
   PlatformAdapter,
@@ -61,6 +61,24 @@ export class DiscordAdapter implements PlatformAdapter {
     const channel = await this.getTextChannel();
     const msg = await channel.send({ content: text });
     return msg.id;
+  }
+
+  /**
+   * Send a message with an embed (Discord-specific).
+   */
+  async sendEmbed(embed: EmbedBuilder): Promise<PlatformMessageRef> {
+    const channel = await this.getTextChannel();
+    const msg = await channel.send({ embeds: [embed] });
+    return msg.id;
+  }
+
+  /**
+   * Edit a message to update its embed (Discord-specific).
+   */
+  async editEmbed(messageRef: PlatformMessageRef, embed: EmbedBuilder): Promise<void> {
+    const channel = await this.getTextChannel();
+    const message = await channel.messages.fetch(messageRef);
+    await message.edit({ embeds: [embed] });
   }
 
   async sendDocument(
