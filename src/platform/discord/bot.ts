@@ -154,6 +154,13 @@ function setupSummaryAggregatorCallbacks(): void {
       const currentSession = getCurrentSession();
       if (!currentSession || currentSession.id !== sessionId) return;
       if (!adapterInstance?.isReady()) return;
+
+      // Route tool messages to the correct thread for this session
+      const threadId = getDiscordThreadForSession(sessionId);
+      if (threadId) {
+        adapterInstance.setThreadId(threadId);
+      }
+
       const parts = formatSummaryWithConfig(text, DISCORD_FORMAT_CONFIG);
       for (const part of parts) {
         await adapterInstance!.sendMessage(part);
@@ -204,12 +211,16 @@ function setupSummaryAggregatorCallbacks(): void {
     const currentSession = getCurrentSession();
     if (!currentSession || currentSession.id !== sessionId) return;
     if (!adapterInstance?.isReady()) return;
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (threadId) adapterInstance.setThreadId(threadId);
     await adapterInstance.sendMessage(t("bot.thinking"));
   });
 
   summaryAggregator.setOnSessionError(async (sessionId, error) => {
     stopTypingIndicator();
     if (!adapterInstance?.isReady()) return;
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (threadId) adapterInstance.setThreadId(threadId);
     await adapterInstance.sendMessage(t("bot.session_error", { message: error }));
     adapterInstance?.clearThreadId();
     clearSessionOwner();
@@ -224,6 +235,11 @@ function setupSummaryAggregatorCallbacks(): void {
 
   summaryAggregator.setOnSessionRetry(async (retryInfo) => {
     if (!adapterInstance?.isReady()) return;
+    const currentSession = getCurrentSession();
+    if (currentSession) {
+      const threadId = getDiscordThreadForSession(currentSession.id);
+      if (threadId) adapterInstance.setThreadId(threadId);
+    }
     await adapterInstance.sendMessage(t("bot.session_retry", { message: retryInfo.message }));
   });
 
@@ -245,6 +261,8 @@ function setupSummaryAggregatorCallbacks(): void {
     if (!adapterInstance?.isReady()) return;
     const currentSession = getCurrentSession();
     if (currentSession) {
+      const threadId = getDiscordThreadForSession(currentSession.id);
+      if (threadId) adapterInstance.setThreadId(threadId);
       await toolMessageBatcherInstance?.flushSession(currentSession.id, "question_asked");
     }
     if (questionManager.isActive()) {
@@ -261,6 +279,8 @@ function setupSummaryAggregatorCallbacks(): void {
     if (!adapterInstance?.isReady()) return;
     const currentSession = getCurrentSession();
     if (currentSession) {
+      const threadId = getDiscordThreadForSession(currentSession.id);
+      if (threadId) adapterInstance.setThreadId(threadId);
       await toolMessageBatcherInstance?.flushSession(currentSession.id, "permission_asked");
     }
     logger.info(
