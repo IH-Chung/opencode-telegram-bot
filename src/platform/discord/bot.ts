@@ -13,7 +13,15 @@ import { DISCORD_FORMAT_CONFIG } from "./formatter.js";
 import { discordPinnedMessageManager } from "./pinned-manager.js";
 import { registerSlashCommands } from "./commands/register.js";
 import { subscribeToEvents, stopEventListening } from "../../opencode/events.js";
-import { getCurrentProject, getCurrentSession } from "../../settings/manager.js";
+import {
+  getCurrentProject,
+  getCurrentSession,
+  getDiscordChannelId,
+  setDiscordChannelId,
+  setDiscordThreadForSession,
+  getDiscordThreadForSession,
+  getDiscordThreadMap,
+} from "../../settings/manager.js";
 import { logger } from "../../utils/logger.js";
 import { t } from "../../i18n/index.js";
 import { safeBackgroundTask } from "../../utils/safe-background-task.js";
@@ -87,6 +95,7 @@ export function registerThreadSession(
   session: import("../../session/manager.js").SessionInfo,
 ): void {
   threadSessionMap.set(threadId, session);
+  setDiscordThreadForSession(session.id, threadId);
   logger.debug(`[Discord] Thread ${threadId} registered for session ${session.id}`);
 }
 
@@ -158,6 +167,13 @@ function setupSummaryAggregatorCallbacks(): void {
   summaryAggregator.setOnComplete(async (sessionId, messageText) => {
     stopTypingIndicator();
     if (!adapterInstance?.isReady()) return;
+
+    // Route to the correct thread for this session
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (threadId) {
+      adapterInstance.setThreadId(threadId);
+    }
+
     await toolMessageBatcherInstance?.flushSession(sessionId, "assistant_message_completed");
     const parts = formatSummaryWithConfig(messageText, DISCORD_FORMAT_CONFIG);
     for (const part of parts) {
@@ -323,6 +339,12 @@ function setupSummaryAggregatorCallbacks(): void {
 function startDiscordPollerForSession(sessionId: string, directory: string): void {
   startMessagePolling(sessionId, directory, (polledSessionId, messageText) => {
     if (!adapterInstance || !adapterInstance.isReady()) return;
+
+    // Route to the correct thread for this session
+    const threadId = getDiscordThreadForSession(polledSessionId);
+    if (threadId) {
+      adapterInstance.setThreadId(threadId);
+    }
 
     logger.info(
       `[MessagePoller] Forwarding polled assistant reply to Discord (session=${polledSessionId})`,
@@ -512,6 +534,20 @@ export function createDiscordBot(): Client {
     logger.info(`[Discord] Logged in as ${readyClient.user.tag}`);
     await registerSlashCommands(readyClient.application.id);
 
+    // Restore adapter channel binding from persisted settings
+    const savedChannelId = getDiscordChannelId();
+    if (savedChannelId && adapterInstance) {
+      adapterInstance.setChatId(savedChannelId);
+      logger.info(`[Discord] Restored channel binding: ${savedChannelId}`);
+    }
+
+    // Restore thread-session mapping from persisted settings
+    const savedThreadMap = getDiscordThreadMap();
+    for (const [sessionId, threadId] of Object.entries(savedThreadMap)) {
+      threadSessionMap.set(threadId, { id: sessionId, title: "", directory: "" });
+      logger.debug(`[Discord] Restored thread mapping: session=${sessionId} → thread=${threadId}`);
+    }
+
     // Auto-subscribe to SSE events + start pollers at startup
     // (enables GUI→Discord forwarding without waiting for user interaction)
     const currentProject = getCurrentProject();
@@ -519,6 +555,16 @@ export function createDiscordBot(): Client {
       const currentSession = getCurrentSession();
       if (currentSession?.id) {
         summaryAggregator.setSession(currentSession.id);
+
+        // Bind adapter to the current session's thread
+        const currentThreadId = getDiscordThreadForSession(currentSession.id);
+        if (currentThreadId && adapterInstance) {
+          adapterInstance.setThreadId(currentThreadId);
+          logger.info(
+            `[Discord] Auto-bound to thread ${currentThreadId} for session ${currentSession.id}`,
+          );
+        }
+
         logger.info(`[Discord] Auto-set aggregator session: ${currentSession.id}`);
       }
       await autoSubscribeDiscordEvents(clientInstance!);
@@ -669,6 +715,12 @@ export function createDiscordBot(): Client {
 
       adapter.setChatId(message.channelId);
       adapter.setThreadId(message.channelId);
+      // Persist the parent channel ID (not the thread ID) for startup restoration
+      const parentChannelId =
+        "parentId" in message.channel && message.channel.parentId
+          ? message.channel.parentId
+          : message.channelId;
+      setDiscordChannelId(parentChannelId);
     } else {
       // DM
       if (!isAuthorizedDiscordUser(message)) {
@@ -676,6 +728,7 @@ export function createDiscordBot(): Client {
         return;
       }
       adapter.setChatId(message.channelId);
+      setDiscordChannelId(message.channelId);
     }
 
     // Session owner lock

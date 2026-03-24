@@ -2,7 +2,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { opencodeClient } from "../../../opencode/client.js";
 import { setCurrentSession, SessionInfo } from "../../../session/manager.js";
 import { ingestSessionInfoForCache } from "../../../session/cache-manager.js";
-import { getCurrentProject } from "../../../settings/manager.js";
+import { getCurrentProject, setDiscordChannelId } from "../../../settings/manager.js";
 import { clearAllInteractionState } from "../../../interaction/cleanup.js";
 import { summaryAggregator } from "../../../summary/aggregator.js";
 import { getStoredAgent, getAgentDefaultModel } from "../../../agent/manager.js";
@@ -79,6 +79,7 @@ export async function handleNewCommand(
         title: session.title,
         directory: currentProject.worktree,
       });
+      setDiscordChannelId(interaction.channelId);
     }
 
     const agent = getStoredAgent();

@@ -1,6 +1,6 @@
 import type { StringSelectMenuInteraction } from "discord.js";
 import { opencodeClient } from "../../../opencode/client.js";
-import { getCurrentProject } from "../../../settings/manager.js";
+import { getCurrentProject, setDiscordChannelId } from "../../../settings/manager.js";
 import { setCurrentSession } from "../../../session/manager.js";
 import { ingestSessionInfoForCache } from "../../../session/cache-manager.js";
 import { summaryAggregator } from "../../../summary/aggregator.js";
@@ -157,6 +157,7 @@ export async function handleSessionSelectInteraction(
         title: selectedSession.title,
         directory: currentProject.worktree,
       });
+      setDiscordChannelId(interaction.channelId);
     }
 
     // Send full status summary into the thread

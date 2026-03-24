@@ -35,6 +35,10 @@ export interface Settings {
   currentAgent?: string;
   currentModel?: ModelInfo;
   pinnedMessageId?: string;
+  /** Discord channel ID where the bot operates */
+  discordChannelId?: string;
+  /** Maps session IDs to Discord thread IDs for message routing */
+  discordThreadMap?: Record<string, string>;
   serverProcess?: ServerProcessInfo;
   sessionDirectoryCache?: SessionDirectoryCacheInfo;
 }
@@ -147,6 +151,31 @@ export function setPinnedMessageId(messageId: string): void {
 export function clearPinnedMessageId(): void {
   currentSettings.pinnedMessageId = undefined;
   void writeSettingsFile(currentSettings);
+}
+
+export function getDiscordChannelId(): string | undefined {
+  return currentSettings.discordChannelId;
+}
+
+export function setDiscordChannelId(channelId: string): void {
+  currentSettings.discordChannelId = channelId;
+  void writeSettingsFile(currentSettings);
+}
+
+export function getDiscordThreadMap(): Record<string, string> {
+  return currentSettings.discordThreadMap ?? {};
+}
+
+export function setDiscordThreadForSession(sessionId: string, threadId: string): void {
+  if (!currentSettings.discordThreadMap) {
+    currentSettings.discordThreadMap = {};
+  }
+  currentSettings.discordThreadMap[sessionId] = threadId;
+  void writeSettingsFile(currentSettings);
+}
+
+export function getDiscordThreadForSession(sessionId: string): string | undefined {
+  return currentSettings.discordThreadMap?.[sessionId];
 }
 
 export function getServerProcess(): ServerProcessInfo | undefined {
