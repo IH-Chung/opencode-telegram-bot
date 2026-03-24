@@ -207,7 +207,8 @@ function setupSummaryAggregatorCallbacks(): void {
   });
 
   summaryAggregator.setOnSessionRetry(async (retryInfo) => {
-    await adapterInstance!.sendMessage(t("bot.session_retry", { message: retryInfo.message }));
+    if (!adapterInstance?.isReady()) return;
+    await adapterInstance.sendMessage(t("bot.session_retry", { message: retryInfo.message }));
   });
 
   summaryAggregator.setOnTokens(async (tokens) => {
@@ -225,7 +226,7 @@ function setupSummaryAggregatorCallbacks(): void {
   });
 
   summaryAggregator.setOnQuestion(async (questions, requestID) => {
-    if (!adapterInstance) return;
+    if (!adapterInstance?.isReady()) return;
     const currentSession = getCurrentSession();
     if (currentSession) {
       await toolMessageBatcherInstance?.flushSession(currentSession.id, "question_asked");
@@ -241,7 +242,7 @@ function setupSummaryAggregatorCallbacks(): void {
   });
 
   summaryAggregator.setOnPermission(async (request) => {
-    if (!adapterInstance) return;
+    if (!adapterInstance?.isReady()) return;
     const currentSession = getCurrentSession();
     if (currentSession) {
       await toolMessageBatcherInstance?.flushSession(currentSession.id, "permission_asked");
@@ -832,7 +833,7 @@ export async function autoSubscribeDiscordEvents(_client: Client): Promise<void>
 
   // Start question poller to discover questions from GUI that SSE might miss.
   startQuestionPoller(project.worktree, async (questions, requestID) => {
-    if (!adapterInstance) return;
+    if (!adapterInstance?.isReady()) return;
 
     // Skip if this question is already being shown
     if (questionManager.isActive() && questionManager.getRequestID() === requestID) return;
