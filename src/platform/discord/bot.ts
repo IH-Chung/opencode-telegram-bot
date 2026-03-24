@@ -520,6 +520,16 @@ export function createDiscordBot(): Client {
       return;
     }
 
+    // Check if session is busy BEFORE creating thread or reacting
+    const existingSession = getCurrentSession();
+    if (existingSession) {
+      const busy = await isSessionBusy(existingSession.id, existingSession.directory);
+      if (busy) {
+        await message.reply(t("bot.session_busy"));
+        return;
+      }
+    }
+
     // Create thread for guild messages so all bot replies stay organized
     if (
       message.channel.type === ChannelType.GuildText ||
