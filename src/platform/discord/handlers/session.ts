@@ -15,6 +15,10 @@ import { buildStatusSummary } from "../formatter.js";
 import { registerThreadSession } from "../bot.js";
 import type { DiscordAdapter } from "../adapter.js";
 import type { AssistantMessage, Part, TextPart } from "@opencode-ai/sdk/v2";
+import { questionManager } from "../../../question/manager.js";
+import { markQuestionSeen } from "../../../opencode/question-poller.js";
+import { showDiscordQuestion } from "./question.js";
+import type { Question } from "../../../question/types.js";
 
 export async function handleSessionSelectInteraction(
   interaction: StringSelectMenuInteraction,
@@ -162,6 +166,33 @@ export async function handleSessionSelectInteraction(
 
     // Send full status summary into the thread
     await adapter.sendMessage(summary);
+
+    // Check for pending questions on this session and show them
+    try {
+      const { data: pendingQuestions } = await opencodeClient.question.list({
+        directory: currentProject.worktree,
+      });
+
+      const questionList = Array.isArray(pendingQuestions) ? pendingQuestions : [];
+      for (const q of questionList) {
+        const qSessionId = q.sessionID as string;
+        if (qSessionId !== selectedSession.id) continue;
+
+        const qId = q.id as string;
+        const questions: Question[] = (q.questions as Question[]) || [];
+        if (!qId || questions.length === 0) continue;
+
+        logger.info(
+          `[Discord] Session switch: found pending question ${qId} for session ${selectedSession.id}`,
+        );
+        questionManager.startQuestions(questions, qId);
+        markQuestionSeen(qId);
+        await showDiscordQuestion(adapter);
+        break; // Only show the first pending question
+      }
+    } catch (err) {
+      logger.debug("[Discord] Could not check pending questions on session switch:", err);
+    }
   } catch (err) {
     logger.error("[Discord] Session select error", err);
     await interaction.editReply({ content: t("sessions.fetch_error"), components: [] });

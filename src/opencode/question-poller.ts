@@ -11,7 +11,11 @@ import type { Question } from "../question/types.js";
 
 const POLL_INTERVAL_MS = 3_000;
 
-type QuestionDiscoveredCallback = (questions: Question[], requestID: string) => void;
+type QuestionDiscoveredCallback = (
+  questions: Question[],
+  requestID: string,
+  sessionId: string,
+) => void;
 
 interface QuestionPollerState {
   directory: string;
@@ -51,7 +55,7 @@ async function pollQuestions(): Promise<void> {
       );
 
       if (state.callback) {
-        state.callback(questionList, qId);
+        state.callback(questionList, qId, q.sessionID as string);
       }
     }
   } catch (err) {

@@ -330,7 +330,7 @@ async function ensureEventSubscription(directory: string): Promise<void> {
     }
   });
 
-  summaryAggregator.setOnQuestion(async (questions, requestID) => {
+  summaryAggregator.setOnQuestion(async (questions, requestID, _sessionId) => {
     if (!botInstance || !chatIdInstance) {
       logger.error("Bot or chat ID not available for showing questions");
       return;
@@ -709,7 +709,7 @@ export async function autoSubscribeEvents(bot: Bot<Context>): Promise<void> {
   }
 
   // Start question poller to discover questions from GUI that SSE might miss.
-  startQuestionPoller(currentProject.worktree, async (questions, requestID) => {
+  startQuestionPoller(currentProject.worktree, async (questions, requestID, _sessionId) => {
     if (!botInstance || !chatIdInstance) return;
 
     // Skip if this question is already being shown

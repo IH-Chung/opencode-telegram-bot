@@ -38,7 +38,7 @@ type ToolCallback = (toolInfo: ToolInfo) => void;
 
 type ToolFileCallback = (fileInfo: ToolFileInfo) => void;
 
-type QuestionCallback = (questions: Question[], requestID: string) => void;
+type QuestionCallback = (questions: Question[], requestID: string, sessionId: string) => void;
 
 type QuestionErrorCallback = () => void;
 
@@ -78,6 +78,8 @@ type SessionDiffCallback = (sessionId: string, diffs: FileChange[]) => void;
 type FileChangeCallback = (change: FileChange) => void;
 
 type ClearedCallback = () => void;
+
+type SessionIdleCallback = (sessionId: string) => void;
 
 interface PreparedToolFileContext {
   fileData: CodeFileData | null;
@@ -146,6 +148,7 @@ class SummaryAggregator {
   private onSessionDiffCallback: SessionDiffCallback | null = null;
   private onFileChangeCallback: FileChangeCallback | null = null;
   private onClearedCallback: ClearedCallback | null = null;
+  private onSessionIdleCallback: SessionIdleCallback | null = null;
   private processedToolStates: Set<string> = new Set();
   private thinkingFiredForMessages: Set<string> = new Set();
   private typingIndicatorCallback: (() => Promise<void>) | null = null;
@@ -218,6 +221,10 @@ class SummaryAggregator {
 
   setOnCleared(callback: ClearedCallback): void {
     this.onClearedCallback = callback;
+  }
+
+  setOnSessionIdle(callback: SessionIdleCallback): void {
+    this.onSessionIdleCallback = callback;
   }
 
   private startTypingIndicator(): void {
@@ -815,6 +822,12 @@ class SummaryAggregator {
 
     // Stop typing indicator when session goes idle
     this.stopTypingIndicator();
+
+    // Notify listeners that the session is idle (agent truly finished)
+    if (this.onSessionIdleCallback) {
+      const cb = this.onSessionIdleCallback;
+      setImmediate(() => cb(sessionID));
+    }
   }
 
   private handleSessionCompacted(
@@ -893,7 +906,7 @@ class SummaryAggregator {
       const callback = this.onQuestionCallback;
       setImmediate(async () => {
         try {
-          await callback(questions as Question[], id);
+          await callback(questions as Question[], id, sessionID);
         } catch (err) {
           logger.error("[Aggregator] Error in question callback:", err);
         }

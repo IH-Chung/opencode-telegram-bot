@@ -155,16 +155,16 @@ function setupSummaryAggregatorCallbacks(): void {
       if (!currentSession || currentSession.id !== sessionId) return;
       if (!adapterInstance?.isReady()) return;
 
-      // Route tool messages to the correct thread for this session
+      // Only send to Discord if this session has a bound thread
       const threadId = getDiscordThreadForSession(sessionId);
-      if (threadId) {
-        adapterInstance.setThreadId(threadId);
-      }
+      if (!threadId) return;
+      adapterInstance.setThreadId(threadId);
 
       const parts = formatSummaryWithConfig(text, DISCORD_FORMAT_CONFIG);
       for (const part of parts) {
         await adapterInstance!.sendMessage(part);
       }
+      adapterInstance.clearThreadId();
     },
     sendFile: async () => {
       // No-op: Discord does not upload file attachments for tool calls
@@ -175,19 +175,40 @@ function setupSummaryAggregatorCallbacks(): void {
     stopTypingIndicator();
     if (!adapterInstance?.isReady()) return;
 
-    // Route to the correct thread for this session
+    // Only send to Discord if this session has a bound thread
     const threadId = getDiscordThreadForSession(sessionId);
-    if (threadId) {
-      adapterInstance.setThreadId(threadId);
-    }
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
 
     await toolMessageBatcherInstance?.flushSession(sessionId, "assistant_message_completed");
     const parts = formatSummaryWithConfig(messageText, DISCORD_FORMAT_CONFIG);
     for (const part of parts) {
       await adapterInstance!.sendMessage(part);
     }
-    adapterInstance?.clearThreadId();
-    clearSessionOwner(); // Session complete — unlock
+    adapterInstance.clearThreadId();
+  });
+
+  summaryAggregator.setOnThinking(async (sessionId) => {
+    startTypingIndicator();
+    const currentSession = getCurrentSession();
+    if (!currentSession || currentSession.id !== sessionId) return;
+    if (!adapterInstance?.isReady()) return;
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
+    await adapterInstance.sendMessage(t("bot.thinking"));
+    adapterInstance.clearThreadId();
+  });
+
+  summaryAggregator.setOnSessionError(async (sessionId, error) => {
+    stopTypingIndicator();
+    if (!adapterInstance?.isReady()) return;
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
+    await adapterInstance.sendMessage(t("bot.session_error", { message: error }));
+    adapterInstance.clearThreadId();
+    clearSessionOwner();
 
     // Remove ⏳ and 🛑 reactions from the user's prompt message
     if (lastPromptMessageRef && adapterInstance) {
@@ -197,32 +218,10 @@ function setupSummaryAggregatorCallbacks(): void {
     }
   });
 
-  summaryAggregator.setOnTool(async (toolInfo) => {
-    const currentSession = getCurrentSession();
-    if (!currentSession || currentSession.id !== toolInfo.sessionId) return;
-    const message = formatToolInfo(toolInfo);
-    if (message) {
-      toolMessageBatcherInstance?.enqueue(toolInfo.sessionId, message);
-    }
-  });
-
-  summaryAggregator.setOnThinking(async (sessionId) => {
-    startTypingIndicator();
-    const currentSession = getCurrentSession();
-    if (!currentSession || currentSession.id !== sessionId) return;
-    if (!adapterInstance?.isReady()) return;
-    const threadId = getDiscordThreadForSession(sessionId);
-    if (threadId) adapterInstance.setThreadId(threadId);
-    await adapterInstance.sendMessage(t("bot.thinking"));
-  });
-
-  summaryAggregator.setOnSessionError(async (sessionId, error) => {
+  // Session idle = agent truly finished (all turns complete)
+  // This is where we clean up reactions and unlock the session
+  summaryAggregator.setOnSessionIdle(async (sessionId) => {
     stopTypingIndicator();
-    if (!adapterInstance?.isReady()) return;
-    const threadId = getDiscordThreadForSession(sessionId);
-    if (threadId) adapterInstance.setThreadId(threadId);
-    await adapterInstance.sendMessage(t("bot.session_error", { message: error }));
-    adapterInstance?.clearThreadId();
     clearSessionOwner();
 
     // Remove ⏳ and 🛑 reactions from the user's prompt message
@@ -235,12 +234,11 @@ function setupSummaryAggregatorCallbacks(): void {
 
   summaryAggregator.setOnSessionRetry(async (retryInfo) => {
     if (!adapterInstance?.isReady()) return;
-    const currentSession = getCurrentSession();
-    if (currentSession) {
-      const threadId = getDiscordThreadForSession(currentSession.id);
-      if (threadId) adapterInstance.setThreadId(threadId);
-    }
+    const threadId = getDiscordThreadForSession(retryInfo.sessionId);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
     await adapterInstance.sendMessage(t("bot.session_retry", { message: retryInfo.message }));
+    adapterInstance.clearThreadId();
   });
 
   summaryAggregator.setOnTokens(async (tokens) => {
@@ -257,14 +255,12 @@ function setupSummaryAggregatorCallbacks(): void {
     stopQuestionPoller();
   });
 
-  summaryAggregator.setOnQuestion(async (questions, requestID) => {
+  summaryAggregator.setOnQuestion(async (questions, requestID, sessionId) => {
     if (!adapterInstance?.isReady()) return;
-    const currentSession = getCurrentSession();
-    if (currentSession) {
-      const threadId = getDiscordThreadForSession(currentSession.id);
-      if (threadId) adapterInstance.setThreadId(threadId);
-      await toolMessageBatcherInstance?.flushSession(currentSession.id, "question_asked");
-    }
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
+    await toolMessageBatcherInstance?.flushSession(sessionId, "question_asked");
     if (questionManager.isActive()) {
       logger.warn("[Discord] Replacing active poll with a new one");
       clearAllInteractionState("question_replaced_by_new_poll");
@@ -277,12 +273,10 @@ function setupSummaryAggregatorCallbacks(): void {
 
   summaryAggregator.setOnPermission(async (request) => {
     if (!adapterInstance?.isReady()) return;
-    const currentSession = getCurrentSession();
-    if (currentSession) {
-      const threadId = getDiscordThreadForSession(currentSession.id);
-      if (threadId) adapterInstance.setThreadId(threadId);
-      await toolMessageBatcherInstance?.flushSession(currentSession.id, "permission_asked");
-    }
+    const threadId = getDiscordThreadForSession(request.sessionID);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
+    await toolMessageBatcherInstance?.flushSession(request.sessionID, "permission_asked");
     logger.info(
       `[Discord] Permission request: type=${request.permission}, requestID=${request.id}`,
     );
@@ -360,11 +354,10 @@ function startDiscordPollerForSession(sessionId: string, directory: string): voi
   startMessagePolling(sessionId, directory, (polledSessionId, messageText) => {
     if (!adapterInstance || !adapterInstance.isReady()) return;
 
-    // Route to the correct thread for this session
+    // Only send to Discord if this session has a bound thread
     const threadId = getDiscordThreadForSession(polledSessionId);
-    if (threadId) {
-      adapterInstance.setThreadId(threadId);
-    }
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
 
     logger.info(
       `[MessagePoller] Forwarding polled assistant reply to Discord (session=${polledSessionId})`,
@@ -905,7 +898,7 @@ export async function autoSubscribeDiscordEvents(_client: Client): Promise<void>
   }
 
   // Start question poller to discover questions from GUI that SSE might miss.
-  startQuestionPoller(project.worktree, async (questions, requestID) => {
+  startQuestionPoller(project.worktree, async (questions, requestID, sessionId) => {
     if (!adapterInstance?.isReady()) return;
 
     // Skip if this question is already being shown
@@ -919,10 +912,10 @@ export async function autoSubscribeDiscordEvents(_client: Client): Promise<void>
       clearAllInteractionState("question_replaced_by_poller");
     }
 
-    const currentSession = getCurrentSession();
-    if (currentSession) {
-      await toolMessageBatcherInstance?.flushSession(currentSession.id, "question_polled");
-    }
+    const threadId = getDiscordThreadForSession(sessionId);
+    if (!threadId) return;
+    adapterInstance.setThreadId(threadId);
+    await toolMessageBatcherInstance?.flushSession(sessionId, "question_polled");
 
     questionManager.startQuestions(questions, requestID);
     markQuestionSeen(requestID);
