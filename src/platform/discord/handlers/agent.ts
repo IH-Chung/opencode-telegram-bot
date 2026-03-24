@@ -2,7 +2,13 @@
  * Discord agent selection handler - renders agent modes as Discord buttons
  */
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
-import { getAvailableAgents, selectAgent, getStoredAgent } from "../../../agent/manager.js";
+import {
+  getAvailableAgents,
+  selectAgent,
+  getStoredAgent,
+  getAgentDefaultModel,
+} from "../../../agent/manager.js";
+import { selectModel, getStoredModel } from "../../../model/manager.js";
 import { logger } from "../../../utils/logger.js";
 import { getAgentEmoji } from "../../../agent/types.js";
 import type { AgentInfo } from "../../../agent/types.js";
@@ -113,13 +119,32 @@ export async function handleAgentButtonInteraction(
 
   selectAgent(agentName);
 
+  // Switch to agent's default model if one is configured
+  const defaultModel = await getAgentDefaultModel(agentName);
+  if (defaultModel) {
+    selectModel({
+      providerID: defaultModel.providerID,
+      modelID: defaultModel.modelID,
+      variant: "default",
+    });
+    logger.info(
+      `[DiscordAgentHandler] Switched to agent default model: ${defaultModel.providerID}/${defaultModel.modelID}`,
+    );
+  }
+
   const emoji = getAgentEmoji(agentName);
   const capitalizedName = agentName.charAt(0).toUpperCase() + agentName.slice(1);
+  const currentModel = getStoredModel();
+  const modelLabel =
+    currentModel.providerID && currentModel.modelID
+      ? `\`${currentModel.modelID}\``
+      : "Agent default";
+  const modelSource = defaultModel ? " *(agent default)*" : "";
 
-  // Acknowledge selection
+  // Acknowledge selection with agent + model info
   if (typeof interaction.editReply === "function") {
     await interaction.editReply({
-      content: `Agent selected: ${emoji} ${capitalizedName}`,
+      content: `✅ **Agent:** ${emoji} ${capitalizedName}\n🤖 **Model:** ${modelLabel}${modelSource}`,
       components: [], // Remove buttons
     });
   }
