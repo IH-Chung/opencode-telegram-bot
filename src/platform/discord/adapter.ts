@@ -60,6 +60,38 @@ export class DiscordAdapter implements PlatformAdapter {
     return this.threadChannelId;
   }
 
+  /**
+   * Create a public thread from a slash command reply message and bind it to this adapter.
+   * Call this after interaction.editReply() so the reply message exists.
+   * All subsequent sendMessage calls will go into the thread.
+   *
+   * @param interaction - The slash command interaction whose reply to thread-ify
+   * @param name - Thread name (truncated to 100 chars)
+   */
+  async createThreadFromInteraction(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    interaction: any,
+    name: string,
+  ): Promise<string | null> {
+    try {
+      const reply = await interaction.fetchReply();
+      if (!reply || typeof reply.startThread !== "function") {
+        logger.debug("[DiscordAdapter] Reply does not support startThread (DM or ephemeral)");
+        return null;
+      }
+      const thread = await reply.startThread({
+        name: name.substring(0, 100),
+        autoArchiveDuration: 60,
+      });
+      this.setThreadId(thread.id);
+      logger.info(`[DiscordAdapter] Created thread ${thread.id} from interaction reply`);
+      return thread.id;
+    } catch (err) {
+      logger.warn("[DiscordAdapter] Failed to create thread from interaction reply:", err);
+      return null;
+    }
+  }
+
   private async getTextChannel(): Promise<TextChannel | DMChannel | ThreadChannel> {
     const targetId = this.threadChannelId ?? this.channelId;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -182,5 +214,13 @@ export class DiscordAdapter implements PlatformAdapter {
   async getFileUrl(fileId: string): Promise<string> {
     // Discord attachment URLs are passed directly as fileId
     return fileId;
+  }
+
+  async addReaction(_messageRef: PlatformMessageRef, _emoji: string): Promise<void> {
+    // No-op: Discord reaction management not implemented
+  }
+
+  async removeReaction(_messageRef: PlatformMessageRef, _emoji: string): Promise<void> {
+    // No-op: Discord reaction management not implemented
   }
 }

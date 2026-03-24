@@ -8,9 +8,11 @@ import { summaryAggregator } from "../../../summary/aggregator.js";
 import { getStoredAgent, getAgentDefaultModel } from "../../../agent/manager.js";
 import { logger } from "../../../utils/logger.js";
 import { t } from "../../../i18n/index.js";
+import type { DiscordAdapter } from "../adapter.js";
 
 export interface NewCommandDeps {
   ensureEventSubscription: (directory: string) => Promise<void>;
+  adapter: DiscordAdapter;
 }
 
 export async function handleNewCommand(
@@ -66,6 +68,9 @@ export async function handleNewCommand(
     }
 
     await interaction.editReply({ content: t("new.created", { title: session.title }) });
+
+    // Create a thread from the reply so all conversation stays organized
+    await deps.adapter.createThreadFromInteraction(interaction, session.title);
   } catch (err) {
     logger.error("[Discord] New command error", err);
     await interaction.editReply({ content: t("new.create_error") });

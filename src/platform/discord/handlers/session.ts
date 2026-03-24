@@ -16,7 +16,7 @@ import type { DiscordAdapter } from "../adapter.js";
 
 export async function handleSessionSelectInteraction(
   interaction: StringSelectMenuInteraction,
-  _adapter: DiscordAdapter,
+  adapter: DiscordAdapter,
 ): Promise<void> {
   const customId = interaction.customId;
   if (customId !== "session:select") return;
@@ -135,6 +135,9 @@ export async function handleSessionSelectInteraction(
       content: summary,
       components: [],
     });
+
+    // Create a thread from the reply so all conversation stays organized
+    await adapter.createThreadFromInteraction(interaction, selectedSession.title);
   } catch (err) {
     logger.error("[Discord] Session select error", err);
     await interaction.editReply({ content: t("sessions.fetch_error"), components: [] });

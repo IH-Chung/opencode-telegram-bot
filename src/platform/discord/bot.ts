@@ -419,6 +419,7 @@ export function createDiscordBot(): Client {
         return handleNewCommand(interaction, {
           ensureEventSubscription: (_directory: string) =>
             autoSubscribeDiscordEvents(clientInstance!),
+          adapter: adapterInstance!,
         });
       case "abort":
         return handleAbortCommand(interaction);
