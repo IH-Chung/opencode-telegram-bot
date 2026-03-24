@@ -17,11 +17,15 @@ type QuestionDiscoveredCallback = (
   sessionId: string,
 ) => void;
 
+/**
+ * Module-level seen set — survives poller stop/start cycles so questions
+ * already shown (via session switch or SSE) are never re-delivered.
+ */
+const globalSeenQuestionIds = new Set<string>();
+
 interface QuestionPollerState {
   directory: string;
   timer: ReturnType<typeof setInterval> | null;
-  /** Question IDs already shown to the user (to avoid duplicates). */
-  seenQuestionIds: Set<string>;
   callback: QuestionDiscoveredCallback;
 }
 
@@ -42,10 +46,10 @@ async function pollQuestions(): Promise<void> {
 
     for (const q of questions) {
       const qId = q.id as string;
-      if (!qId || state.seenQuestionIds.has(qId)) continue;
+      if (!qId || globalSeenQuestionIds.has(qId)) continue;
 
       // Mark as seen immediately to prevent double-delivery
-      state.seenQuestionIds.add(qId);
+      globalSeenQuestionIds.add(qId);
 
       const questionList: Question[] = (q.questions as Question[]) || [];
       if (questionList.length === 0) continue;
@@ -75,7 +79,6 @@ export function startQuestionPoller(directory: string, callback: QuestionDiscove
   state = {
     directory,
     timer: null,
-    seenQuestionIds: new Set(),
     callback,
   };
 
@@ -110,11 +113,11 @@ async function loadInitialSnapshot(): Promise<void> {
     if (Array.isArray(questions)) {
       for (const q of questions) {
         if (q.id) {
-          state.seenQuestionIds.add(q.id as string);
+          globalSeenQuestionIds.add(q.id as string);
         }
       }
       logger.info(
-        `[QuestionPoller] Initial snapshot: ${state.seenQuestionIds.size} existing questions marked as seen`,
+        `[QuestionPoller] Initial snapshot: ${globalSeenQuestionIds.size} existing questions marked as seen`,
       );
     }
   } catch (err) {
@@ -127,9 +130,7 @@ async function loadInitialSnapshot(): Promise<void> {
  * already showed this question to prevent duplicate display).
  */
 export function markQuestionSeen(questionId: string): void {
-  if (state) {
-    state.seenQuestionIds.add(questionId);
-  }
+  globalSeenQuestionIds.add(questionId);
 }
 
 /** Stop polling. */
@@ -143,4 +144,5 @@ export function stopQuestionPoller(): void {
 /** Reset state (for testing). */
 export function resetQuestionPollerState(): void {
   stopQuestionPoller();
+  globalSeenQuestionIds.clear();
 }
