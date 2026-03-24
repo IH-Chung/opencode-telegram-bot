@@ -4,31 +4,34 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { getAvailableAgents, selectAgent, getStoredAgent } from "../../../agent/manager.js";
 import { logger } from "../../../utils/logger.js";
-import { getAgentDisplayName } from "../../../agent/types.js";
+import { getAgentEmoji } from "../../../agent/types.js";
+import type { AgentInfo } from "../../../agent/types.js";
 import type { DiscordAdapter } from "../adapter.js";
 
 // Max buttons per ActionRow
 const MAX_BUTTONS_PER_ROW = 5;
 
 /**
- * Build Discord buttons for agent selection
+ * Build Discord buttons for agent selection from real agent list
  */
-function buildAgentButtons(currentAgent: string): ActionRowBuilder<ButtonBuilder>[] {
-  const agentNames = ["build", "plan"]; // Primary agents to show
-
+function buildAgentButtons(
+  agents: AgentInfo[],
+  currentAgent: string,
+): ActionRowBuilder<ButtonBuilder>[] {
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  const buttons: ButtonBuilder[] = agentNames.map((agentName) => {
-    const isSelected = currentAgent === agentName;
-    const label = getAgentDisplayName(agentName).substring(0, 80);
-    const customId = `agent:${agentName}`;
+  const buttons: ButtonBuilder[] = agents.map((agent) => {
+    const isSelected = currentAgent === agent.name;
+    const emoji = getAgentEmoji(agent.name);
+    const capitalizedName = agent.name.charAt(0).toUpperCase() + agent.name.slice(1);
+    const label = isSelected ? `✅ ${emoji} ${capitalizedName}` : `${emoji} ${capitalizedName}`;
 
     return new ButtonBuilder()
-      .setCustomId(customId)
-      .setLabel(label)
+      .setCustomId(`agent:${agent.name}`)
+      .setLabel(label.substring(0, 80))
       .setStyle(isSelected ? ButtonStyle.Success : ButtonStyle.Primary);
   });
 
-  // Group into rows
+  // Group into rows of 5 (Discord limit)
   for (let i = 0; i < buttons.length; i += MAX_BUTTONS_PER_ROW) {
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       buttons.slice(i, i + MAX_BUTTONS_PER_ROW),
@@ -40,7 +43,7 @@ function buildAgentButtons(currentAgent: string): ActionRowBuilder<ButtonBuilder
 }
 
 /**
- * Show agent selection menu
+ * Show agent selection menu with all available agents from the API
  */
 export async function showDiscordAgentSelection(
   adapter: DiscordAdapter,
@@ -51,10 +54,7 @@ export async function showDiscordAgentSelection(
     const agents = await getAvailableAgents();
     const currentAgent = getStoredAgent();
 
-    // Filter to primary agents
-    const primaryAgents = agents.filter((a) => a.mode === "primary" || a.mode === "all");
-
-    if (primaryAgents.length === 0) {
+    if (agents.length === 0) {
       const message = "No agents available.";
       if (interaction && typeof interaction.reply === "function") {
         await interaction.reply({ content: message, ephemeral: true });
@@ -64,8 +64,10 @@ export async function showDiscordAgentSelection(
       return;
     }
 
-    const rows = buildAgentButtons(currentAgent);
-    const text = "Select agent mode:";
+    const rows = buildAgentButtons(agents, currentAgent);
+    const currentEmoji = getAgentEmoji(currentAgent);
+    const currentName = currentAgent.charAt(0).toUpperCase() + currentAgent.slice(1);
+    const text = `⚡ **Agent Selection**\nCurrent: ${currentEmoji} ${currentName}`;
 
     if (interaction && typeof interaction.reply === "function") {
       await interaction.reply({
@@ -111,10 +113,13 @@ export async function handleAgentButtonInteraction(
 
   selectAgent(agentName);
 
+  const emoji = getAgentEmoji(agentName);
+  const capitalizedName = agentName.charAt(0).toUpperCase() + agentName.slice(1);
+
   // Acknowledge selection
   if (typeof interaction.editReply === "function") {
     await interaction.editReply({
-      content: `Agent mode: ${getAgentDisplayName(agentName)}`,
+      content: `Agent selected: ${emoji} ${capitalizedName}`,
       components: [], // Remove buttons
     });
   }
