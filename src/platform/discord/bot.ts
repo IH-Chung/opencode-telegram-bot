@@ -26,6 +26,13 @@ import { clearAllInteractionState } from "../../interaction/cleanup.js";
 import { resolveInteractionGuardDecision } from "../../interaction/guard.js";
 import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2";
 import { formatErrorDetails } from "../../utils/error-format.js";
+import { startMessagePolling, stopMessagePolling } from "../../opencode/message-poller.js";
+import {
+  startQuestionPoller,
+  stopQuestionPoller,
+  markQuestionSeen,
+} from "../../opencode/question-poller.js";
+import { permissionManager } from "../../permission/manager.js";
 
 // Command handlers
 import { handleStatusCommand } from "./commands/status.js";
@@ -61,6 +68,8 @@ let typingInterval: ReturnType<typeof setInterval> | null = null;
 let eventSubscriptionAbortController: AbortController | null = null;
 let toolMessageBatcherInstance: ToolMessageBatcher | null = null;
 let lastPromptMessageRef: string | null = null;
+let lastBotQuestionReplyID: string | null = null;
+let lastBotPermissionReplyID: string | null = null;
 
 /**
  * Maps Discord thread IDs → the session they were created for.
@@ -79,6 +88,20 @@ export function registerThreadSession(
 ): void {
   threadSessionMap.set(threadId, session);
   logger.debug(`[Discord] Thread ${threadId} registered for session ${session.id}`);
+}
+
+/**
+ * Mark a question reply as bot-initiated (to distinguish from external GUI replies).
+ */
+export function markBotQuestionReply(requestID: string): void {
+  lastBotQuestionReplyID = requestID;
+}
+
+/**
+ * Mark a permission reply as bot-initiated (to distinguish from external GUI replies).
+ */
+export function markBotPermissionReply(requestID: string): void {
+  lastBotPermissionReplyID = requestID;
 }
 
 /**
@@ -193,6 +216,8 @@ function setupSummaryAggregatorCallbacks(): void {
 
   summaryAggregator.setOnCleared(() => {
     toolMessageBatcherInstance?.clearAll("summary_aggregator_clear");
+    stopMessagePolling();
+    stopQuestionPoller();
   });
 
   summaryAggregator.setOnQuestion(async (questions, requestID) => {
@@ -207,6 +232,7 @@ function setupSummaryAggregatorCallbacks(): void {
     }
     logger.info(`[Discord] Received ${questions.length} questions, requestID=${requestID}`);
     questionManager.startQuestions(questions, requestID);
+    markQuestionSeen(requestID);
     await showDiscordQuestion(adapterInstance);
   });
 
@@ -220,6 +246,97 @@ function setupSummaryAggregatorCallbacks(): void {
       `[Discord] Permission request: type=${request.permission}, requestID=${request.id}`,
     );
     await showDiscordPermissionRequest(adapterInstance, request);
+  });
+
+  // Handle question answered externally (e.g., from GUI) — "first answer wins"
+  summaryAggregator.setOnQuestionExternalReply((requestID) => {
+    if (lastBotQuestionReplyID === requestID) {
+      lastBotQuestionReplyID = null;
+      logger.debug(`[Discord] Ignoring question.replied for bot's own reply: ${requestID}`);
+      return;
+    }
+
+    if (!questionManager.isActive()) return;
+
+    const activeRequestID = questionManager.getRequestID();
+    if (activeRequestID && activeRequestID !== requestID) return;
+
+    logger.info(
+      `[Discord] Question answered externally (GUI): requestID=${requestID}, dismissing Discord poll`,
+    );
+
+    const messageIds = questionManager.getMessageIds();
+    for (const messageId of messageIds) {
+      if (adapterInstance) {
+        adapterInstance.editMessage(messageId, t("question.answered_externally")).catch((err) => {
+          logger.debug(`[Discord] Failed to edit question message ${messageId}:`, err);
+        });
+      }
+    }
+
+    clearAllInteractionState("question_answered_externally");
+  });
+
+  // Handle permission answered externally (e.g., from GUI)
+  summaryAggregator.setOnPermissionExternalReply((requestID) => {
+    if (lastBotPermissionReplyID === requestID) {
+      lastBotPermissionReplyID = null;
+      logger.debug(`[Discord] Ignoring permission.replied for bot's own reply: ${requestID}`);
+      return;
+    }
+
+    if (!permissionManager.isActive()) return;
+
+    logger.info(
+      `[Discord] Permission answered externally (GUI): requestID=${requestID}, dismissing Discord buttons`,
+    );
+
+    const messageId = permissionManager.getMessageId();
+    if (messageId && adapterInstance) {
+      adapterInstance.editMessage(messageId, t("permission.answered_externally")).catch((err) => {
+        logger.debug(`[Discord] Failed to edit permission message ${messageId}:`, err);
+      });
+    }
+
+    permissionManager.clear();
+    clearAllInteractionState("permission_answered_externally");
+  });
+
+  // Handle session compacted — reload context tokens in pinned embed
+  summaryAggregator.setOnSessionCompacted(async (sessionId, directory) => {
+    logger.info(`[Discord] Session compacted: ${sessionId}, reloading context`);
+    await discordPinnedMessageManager.onSessionCompacted(sessionId, directory);
+  });
+}
+
+/**
+ * Start the message poller for the given session. The poller detects
+ * completed assistant replies that the SSE aggregator did not pick up
+ * (e.g. messages originating from the OpenCode GUI) and forwards them
+ * to Discord.
+ */
+function startDiscordPollerForSession(sessionId: string, directory: string): void {
+  startMessagePolling(sessionId, directory, (polledSessionId, messageText) => {
+    if (!adapterInstance) return;
+
+    logger.info(
+      `[MessagePoller] Forwarding polled assistant reply to Discord (session=${polledSessionId})`,
+    );
+
+    const parts = formatSummaryWithConfig(messageText, DISCORD_FORMAT_CONFIG);
+    safeBackgroundTask({
+      taskName: "message_poller.discord_forward",
+      task: async () => {
+        for (const part of parts) {
+          await adapterInstance!.sendMessage(part);
+        }
+      },
+      onError: (err) => {
+        logger.error("[MessagePoller] Failed to send polled message to Discord:", err);
+      },
+    });
+  }).catch((err: unknown) => {
+    logger.warn("[MessagePoller] Failed to start polling:", err);
   });
 }
 
@@ -389,6 +506,18 @@ export function createDiscordBot(): Client {
   client.on(Events.ClientReady, async (readyClient) => {
     logger.info(`[Discord] Logged in as ${readyClient.user.tag}`);
     await registerSlashCommands(readyClient.application.id);
+
+    // Auto-subscribe to SSE events + start pollers at startup
+    // (enables GUI→Discord forwarding without waiting for user interaction)
+    const currentProject = getCurrentProject();
+    if (currentProject?.worktree) {
+      const currentSession = getCurrentSession();
+      if (currentSession?.id) {
+        summaryAggregator.setSession(currentSession.id);
+        logger.info(`[Discord] Auto-set aggregator session: ${currentSession.id}`);
+      }
+      await autoSubscribeDiscordEvents(clientInstance!);
+    }
   });
 
   client.on(Events.InteractionCreate, async (interaction) => {
@@ -688,5 +817,37 @@ export async function autoSubscribeDiscordEvents(_client: Client): Promise<void>
     onError: (err: unknown) => {
       logger.error("[Discord] SSE subscription error", err);
     },
+  });
+
+  // Start (or re-sync) the message poller for the current session.
+  // This catches assistant replies from the GUI that the SSE aggregator may miss.
+  const pollerSession = getCurrentSession();
+  if (pollerSession?.id) {
+    startDiscordPollerForSession(pollerSession.id, project.worktree);
+  }
+
+  // Start question poller to discover questions from GUI that SSE might miss.
+  startQuestionPoller(project.worktree, async (questions, requestID) => {
+    if (!adapterInstance) return;
+
+    // Skip if this question is already being shown
+    if (questionManager.isActive() && questionManager.getRequestID() === requestID) return;
+
+    logger.info(
+      `[Discord] Question discovered by poller: requestID=${requestID}, questions=${questions.length}`,
+    );
+
+    if (questionManager.isActive()) {
+      clearAllInteractionState("question_replaced_by_poller");
+    }
+
+    const currentSession = getCurrentSession();
+    if (currentSession) {
+      await toolMessageBatcherInstance?.flushSession(currentSession.id, "question_polled");
+    }
+
+    questionManager.startQuestions(questions, requestID);
+    markQuestionSeen(requestID);
+    await showDiscordQuestion(adapterInstance);
   });
 }

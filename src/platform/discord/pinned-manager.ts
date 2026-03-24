@@ -7,6 +7,8 @@ import {
 import { createStatusEmbed, type DiscordStatusData } from "./formatter.js";
 import type { FileChange } from "../types.js";
 import type { DiscordAdapter } from "./adapter.js";
+import { opencodeClient } from "../../opencode/client.js";
+import type { AssistantMessage } from "@opencode-ai/sdk/v2";
 
 interface DiscordPinnedState {
   messageRef: string | null;
@@ -141,6 +143,51 @@ export class DiscordPinnedMessageManager {
   async onSessionError(): Promise<void> {
     this.state.status = "error";
     await this.scheduleUpdate();
+  }
+
+  /**
+   * Called when session is compacted — reload context tokens from history.
+   */
+  async onSessionCompacted(sessionId: string, directory: string): Promise<void> {
+    logger.info(`[DiscordPinnedManager] Session compacted, reloading context: ${sessionId}`);
+
+    try {
+      const { data: messages, error } = await opencodeClient.session.messages({
+        sessionID: sessionId,
+        directory,
+      });
+
+      if (error || !messages) {
+        logger.warn(
+          "[DiscordPinnedManager] Failed to load session history after compaction:",
+          error,
+        );
+        return;
+      }
+
+      // Find the last non-summary assistant message for current context size
+      let lastContextSize = 0;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        if (msg.info.role === "assistant") {
+          const info = msg.info as AssistantMessage;
+          if (info.summary) continue;
+          const input = info.tokens?.input ?? 0;
+          const cacheRead = info.tokens?.cache?.read ?? 0;
+          lastContextSize = input + cacheRead;
+          break;
+        }
+      }
+
+      this.state.tokensUsed = lastContextSize;
+      logger.info(
+        `[DiscordPinnedManager] Reloaded context after compaction: ${lastContextSize} tokens`,
+      );
+
+      await this.scheduleUpdate();
+    } catch (err) {
+      logger.error("[DiscordPinnedManager] Error reloading context after compaction:", err);
+    }
   }
 
   /**

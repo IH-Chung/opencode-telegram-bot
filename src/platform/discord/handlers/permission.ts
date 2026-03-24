@@ -12,6 +12,7 @@ import { logger } from "../../../utils/logger.js";
 import { t } from "../../../i18n/index.js";
 import type { DiscordAdapter } from "../adapter.js";
 import type { PermissionRequest } from "../../../permission/types.js";
+import { markBotPermissionReply } from "../bot.js";
 
 // Permission type display names
 const PERMISSION_NAME_KEYS: Record<
@@ -283,6 +284,9 @@ async function handlePermissionReply(
   logger.info(
     `[DiscordPermissionHandler] Sending permission reply: ${reply}, requestID=${requestId}`,
   );
+
+  // Mark as bot-initiated so external reply detection ignores it
+  markBotPermissionReply(requestId);
 
   // CRITICAL: Fire-and-forget!
   safeBackgroundTask({

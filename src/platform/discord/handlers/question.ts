@@ -18,6 +18,7 @@ import { safeBackgroundTask } from "../../../utils/safe-background-task.js";
 import { logger } from "../../../utils/logger.js";
 import { t } from "../../../i18n/index.js";
 import type { DiscordAdapter } from "../adapter.js";
+import { markBotQuestionReply } from "../bot.js";
 // Discord button label max length
 const MAX_BUTTON_LABEL_LENGTH = 80;
 
@@ -437,6 +438,9 @@ async function sendAllAnswersToAgent(adapter: DiscordAdapter): Promise<void> {
   logger.info(
     `[DiscordQuestionHandler] Sending all ${totalQuestions} answers to agent via question.reply: requestID=${requestID}`,
   );
+
+  // Mark as bot-initiated so external reply detection ignores it
+  markBotQuestionReply(requestID);
 
   // CRITICAL: Fire-and-forget!
   safeBackgroundTask({

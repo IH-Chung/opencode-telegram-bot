@@ -361,7 +361,7 @@ export async function handleCommandsCommand(
  */
 export async function handleCommandSelectInteraction(
   interaction: StringSelectMenuInteraction,
-  adapter: DiscordAdapter,
+  _adapter: DiscordAdapter,
 ): Promise<void> {
   const customId = interaction.customId;
   if (customId !== "command:select") return;
