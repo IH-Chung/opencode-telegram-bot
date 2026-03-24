@@ -131,13 +131,17 @@ export async function handleSessionSelectInteraction(
       summary += `\n\n💬 **Last response:**\n> ${lastMessagePreview.split("\n").join("\n> ")}`;
     }
 
+    // Minimal anchor in main channel — thread will hold the real status
     await interaction.editReply({
-      content: summary,
+      content: `🧵 **${selectedSession.title}**`,
       components: [],
     });
 
-    // Create a thread from the reply so all conversation stays organized
+    // Create thread from the reply, then send status inside it
     await adapter.createThreadFromInteraction(interaction, selectedSession.title);
+
+    // Send full status summary into the thread
+    await adapter.sendMessage(summary);
   } catch (err) {
     logger.error("[Discord] Session select error", err);
     await interaction.editReply({ content: t("sessions.fetch_error"), components: [] });

@@ -67,10 +67,31 @@ export async function handleNewCommand(
       });
     }
 
-    await interaction.editReply({ content: t("new.created", { title: session.title }) });
+    // Minimal anchor in main channel — thread will hold the real status
+    await interaction.editReply({ content: `🧵 **${session.title}**` });
 
-    // Create a thread from the reply so all conversation stays organized
+    // Create thread from the reply, then send status inside it
     await deps.adapter.createThreadFromInteraction(interaction, session.title);
+
+    const agent = getStoredAgent();
+    const { getStoredModel } = await import("../../../model/manager.js");
+    const model = getStoredModel();
+    const { buildStatusSummary } = await import("../formatter.js");
+    const { getAgentDisplayName } = await import("../../../agent/types.js");
+    const projectName =
+      (currentProject.name || currentProject.worktree).split(/[\\/]/).pop() ||
+      currentProject.worktree;
+
+    const status = buildStatusSummary({
+      action: t("new.created", { title: session.title }),
+      project: projectName,
+      session: session.title,
+      agent: getAgentDisplayName(agent),
+      model: model.providerID && model.modelID ? model.modelID : "Auto (agent default)",
+      variant: model.variant,
+    });
+
+    await deps.adapter.sendMessage(status);
   } catch (err) {
     logger.error("[Discord] New command error", err);
     await interaction.editReply({ content: t("new.create_error") });
