@@ -103,47 +103,45 @@ function buildQuestionButtons(
   });
 
   // Group buttons into rows of 5 (Discord limit)
+  // Reserve last row for action buttons — cap option rows to 4 rows max
+  const maxOptionRows = MAX_BUTTONS_PER_ROW - 1; // 4 rows for options, 1 for actions
   for (let i = 0; i < buttons.length; i += MAX_BUTTONS_PER_ROW) {
+    if (rows.length >= maxOptionRows) break;
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       buttons.slice(i, i + MAX_BUTTONS_PER_ROW),
     );
     rows.push(row);
   }
 
-  // Add action row with Submit/Cancel buttons for multiple choice
+  // Action row — always shown for both single and multiple choice
+  const actionRow = new ActionRowBuilder<ButtonBuilder>();
+
   if (question.multiple) {
-    const actionRow = new ActionRowBuilder<ButtonBuilder>();
     actionRow.addComponents(
       new ButtonBuilder()
         .setCustomId(`question:submit:${questionIndex}`)
         .setLabel(t("question.button.submit"))
         .setStyle(ButtonStyle.Success),
     );
-    actionRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`question:custom:${questionIndex}`)
-        .setLabel(t("question.button.custom"))
-        .setStyle(ButtonStyle.Secondary),
-    );
-    actionRow.addComponents(
-      new ButtonBuilder()
-        .setCustomId(`question:cancel:${questionIndex}`)
-        .setLabel(t("question.button.cancel"))
-        .setStyle(ButtonStyle.Danger),
-    );
-    rows.push(actionRow);
-  } else {
-    // For single choice, add cancel button in last row
-    const lastRow = rows[rows.length - 1];
-    if (lastRow && (lastRow.data.components?.length ?? 0) < MAX_BUTTONS_PER_ROW) {
-      lastRow.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`question:cancel:${questionIndex}`)
-          .setLabel(t("question.button.cancel"))
-          .setStyle(ButtonStyle.Danger),
-      );
-    }
   }
+
+  // "Type my own answer" — always available
+  actionRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`question:custom:${questionIndex}`)
+      .setLabel(`✏️ ${t("question.button.custom")}`)
+      .setStyle(ButtonStyle.Secondary),
+  );
+
+  // Cancel
+  actionRow.addComponents(
+    new ButtonBuilder()
+      .setCustomId(`question:cancel:${questionIndex}`)
+      .setLabel(t("question.button.cancel"))
+      .setStyle(ButtonStyle.Danger),
+  );
+
+  rows.push(actionRow);
 
   return rows;
 }
