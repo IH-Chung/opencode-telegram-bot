@@ -23,6 +23,7 @@ import { getStoredModel } from "../../model/manager.js";
 import { ingestSessionInfoForCache } from "../../session/cache-manager.js";
 import { setCurrentSession } from "../../session/manager.js";
 import { clearAllInteractionState } from "../../interaction/cleanup.js";
+import { resolveInteractionGuardDecision } from "../../interaction/guard.js";
 import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2";
 import { formatErrorDetails } from "../../utils/error-format.js";
 
@@ -59,6 +60,7 @@ let adapterInstance: DiscordAdapter | null = null;
 let typingInterval: ReturnType<typeof setInterval> | null = null;
 let eventSubscriptionAbortController: AbortController | null = null;
 let toolMessageBatcherInstance: ToolMessageBatcher | null = null;
+let lastPromptMessageRef: string | null = null;
 
 /**
  * Start the typing indicator — sends typing every 8 seconds (Discord typing expires at 10s).
@@ -119,6 +121,12 @@ function setupSummaryAggregatorCallbacks(): void {
     }
     adapterInstance?.clearThreadId();
     clearSessionOwner(); // Session complete — unlock
+
+    // Remove ⏳ reaction from the user's prompt message
+    if (lastPromptMessageRef && adapterInstance) {
+      await adapterInstance.removeReaction(lastPromptMessageRef, "⏳").catch(() => {});
+      lastPromptMessageRef = null;
+    }
   });
 
   summaryAggregator.setOnTool(async (toolInfo) => {
@@ -142,6 +150,12 @@ function setupSummaryAggregatorCallbacks(): void {
     await adapterInstance!.sendMessage(t("bot.session_error", { message: error }));
     adapterInstance?.clearThreadId();
     clearSessionOwner();
+
+    // Remove ⏳ reaction from the user's prompt message
+    if (lastPromptMessageRef && adapterInstance) {
+      await adapterInstance.removeReaction(lastPromptMessageRef, "⏳").catch(() => {});
+      lastPromptMessageRef = null;
+    }
   });
 
   summaryAggregator.setOnSessionRetry(async (retryInfo) => {
@@ -483,6 +497,29 @@ export function createDiscordBot(): Client {
     const text = message.content.trim();
     if (!text) return;
 
+    // Interaction guard — block prompts while a question/permission is pending
+    const guardDecision = resolveInteractionGuardDecision({ type: "text", text });
+    if (!guardDecision.allow) {
+      const kind = guardDecision.state?.kind;
+      const reason = guardDecision.reason;
+      let hint: string;
+      if (kind === "question") {
+        hint =
+          reason === "command_not_allowed"
+            ? t("question.blocked.command_not_allowed")
+            : t("question.blocked.expected_answer");
+      } else if (kind === "permission") {
+        hint =
+          reason === "command_not_allowed"
+            ? t("permission.blocked.command_not_allowed")
+            : t("permission.blocked.expected_reply");
+      } else {
+        hint = t("interaction.blocked.finish_current");
+      }
+      await message.reply(hint);
+      return;
+    }
+
     // Create thread for guild messages so all bot replies stay organized
     if (
       message.channel.type === ChannelType.GuildText ||
@@ -499,6 +536,14 @@ export function createDiscordBot(): Client {
       } catch (err) {
         logger.warn("[Discord] Failed to create thread, replies will go to main channel", err);
       }
+    }
+
+    // Add ⏳ reaction to indicate processing
+    lastPromptMessageRef = message.id;
+    try {
+      await message.react("⏳");
+    } catch {
+      // Silent fail — bot may not have Add Reactions permission
     }
 
     // Fire-and-forget prompt processing
