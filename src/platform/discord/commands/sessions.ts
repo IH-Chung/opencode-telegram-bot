@@ -14,7 +14,7 @@ const MAX_SELECT_OPTIONS = 25;
 export async function handleSessionsCommand(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
+  await interaction.deferReply();
 
   try {
     const currentProject = getCurrentProject();

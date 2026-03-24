@@ -73,23 +73,42 @@ export class DiscordAdapter implements PlatformAdapter {
     interaction: any,
     name: string,
   ): Promise<string | null> {
+    const threadName = name.substring(0, 100);
+
+    // First clear any existing thread so we don't reuse the old one
+    this.clearThreadId();
+
+    // Strategy 1: thread from the interaction reply (works for /new deferReply)
     try {
       const reply = await interaction.fetchReply();
-      if (!reply || typeof reply.startThread !== "function") {
-        logger.debug("[DiscordAdapter] Reply does not support startThread (DM or ephemeral)");
-        return null;
+      if (reply && typeof reply.startThread === "function" && !reply.flags?.has(64)) {
+        const thread = await reply.startThread({ name: threadName, autoArchiveDuration: 60 });
+        this.setThreadId(thread.id);
+        logger.info(`[DiscordAdapter] Created thread ${thread.id} from interaction reply`);
+        return thread.id;
       }
-      const thread = await reply.startThread({
-        name: name.substring(0, 100),
-        autoArchiveDuration: 60,
-      });
-      this.setThreadId(thread.id);
-      logger.info(`[DiscordAdapter] Created thread ${thread.id} from interaction reply`);
-      return thread.id;
-    } catch (err) {
-      logger.warn("[DiscordAdapter] Failed to create thread from interaction reply:", err);
-      return null;
+    } catch {
+      // Fall through to strategy 2
     }
+
+    // Strategy 2: send a plain message to the channel and thread that
+    // (needed for ephemeral replies and select-menu deferUpdate interactions)
+    try {
+      const channel =
+        interaction.channel ?? (await interaction.client?.channels?.fetch(interaction.channelId));
+      if (channel && typeof channel.send === "function") {
+        const anchor = await channel.send({ content: `🧵 **${threadName}**` });
+        const thread = await anchor.startThread({ name: threadName, autoArchiveDuration: 60 });
+        this.setThreadId(thread.id);
+        logger.info(`[DiscordAdapter] Created thread ${thread.id} from channel anchor message`);
+        return thread.id;
+      }
+    } catch (err) {
+      logger.warn("[DiscordAdapter] Failed to create thread from channel anchor:", err);
+    }
+
+    logger.warn("[DiscordAdapter] Could not create thread — replies will go to main channel");
+    return null;
   }
 
   private async getTextChannel(): Promise<TextChannel | DMChannel | ThreadChannel> {
@@ -216,11 +235,27 @@ export class DiscordAdapter implements PlatformAdapter {
     return fileId;
   }
 
-  async addReaction(_messageRef: PlatformMessageRef, _emoji: string): Promise<void> {
-    // No-op: Discord reaction management not implemented
+  async addReaction(messageRef: PlatformMessageRef, emoji: string): Promise<void> {
+    try {
+      const channel = await this.getTextChannel();
+      const message = await channel.messages.fetch(messageRef);
+      await message.react(emoji);
+    } catch (err) {
+      logger.debug(`[DiscordAdapter] Failed to add reaction: ${err}`);
+    }
   }
 
-  async removeReaction(_messageRef: PlatformMessageRef, _emoji: string): Promise<void> {
-    // No-op: Discord reaction management not implemented
+  async removeReaction(messageRef: PlatformMessageRef, emoji: string): Promise<void> {
+    try {
+      const channel = await this.getTextChannel();
+      const message = await channel.messages.fetch(messageRef);
+      // Remove the bot's own reaction
+      const botReaction = message.reactions.cache.get(emoji);
+      if (botReaction) {
+        await botReaction.users.remove();
+      }
+    } catch (err) {
+      logger.debug(`[DiscordAdapter] Failed to remove reaction: ${err}`);
+    }
   }
 }
