@@ -581,6 +581,13 @@ async function sendPrompt(
   activeSessionManager.activate(currentSession);
   summaryAggregator.setSession(currentSession.id);
 
+  // Always update pinned embed with the active session's title
+  await discordPinnedMessageManager.onSessionChanged(
+    currentSession.id,
+    currentSession.title,
+    project.name || project.worktree,
+  );
+
   const sessionIsBusy = await isSessionBusy(currentSession.id, currentSession.directory);
   if (sessionIsBusy) {
     await adapter.sendMessage(t("bot.session_busy"));
