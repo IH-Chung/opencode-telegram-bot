@@ -50,14 +50,14 @@ function cloneState(state: InteractionState): InteractionState {
 }
 
 class InteractionManager {
-  private state: InteractionState | null = null;
+  private states: Map<string, InteractionState> = new Map();
 
-  start(options: StartInteractionOptions): InteractionState {
+  start(options: StartInteractionOptions, sessionId: string = "default"): InteractionState {
     const now = Date.now();
     let expiresAt: number | null = null;
 
-    if (this.state) {
-      this.clear("state_replaced");
+    if (this.states.has(sessionId)) {
+      this.clear("state_replaced", sessionId);
     }
 
     if (typeof options.expiresInMs === "number") {
@@ -73,80 +73,97 @@ class InteractionManager {
       expiresAt,
     };
 
-    this.state = nextState;
+    this.states.set(sessionId, nextState);
 
     logger.info(
-      `[InteractionManager] Started interaction: kind=${nextState.kind}, expectedInput=${nextState.expectedInput}, allowedCommands=${nextState.allowedCommands.join(",") || "none"}`,
+      `[InteractionManager] Started interaction: kind=${nextState.kind}, expectedInput=${nextState.expectedInput}, allowedCommands=${nextState.allowedCommands.join(",") || "none"}, session=${sessionId}`,
     );
 
     return cloneState(nextState);
   }
 
-  get(): InteractionState | null {
-    if (!this.state) {
+  get(sessionId: string = "default"): InteractionState | null {
+    const state = this.states.get(sessionId);
+    if (!state) {
       return null;
     }
-
-    return cloneState(this.state);
+    return cloneState(state);
   }
 
-  getSnapshot(): InteractionState | null {
-    return this.get();
+  getSnapshot(sessionId: string = "default"): InteractionState | null {
+    return this.get(sessionId);
   }
 
-  isActive(): boolean {
-    return this.state !== null;
+  isActive(sessionId: string = "default"): boolean {
+    return this.states.has(sessionId);
   }
 
-  isExpired(referenceTimeMs: number = Date.now()): boolean {
-    if (!this.state || this.state.expiresAt === null) {
+  isExpired(referenceTimeMs: number = Date.now(), sessionId: string = "default"): boolean {
+    const state = this.states.get(sessionId);
+    if (!state || state.expiresAt === null) {
       return false;
     }
-
-    return referenceTimeMs >= this.state.expiresAt;
+    return referenceTimeMs >= state.expiresAt;
   }
 
-  transition(options: TransitionInteractionOptions): InteractionState | null {
-    if (!this.state) {
+  transition(
+    options: TransitionInteractionOptions,
+    sessionId: string = "default",
+  ): InteractionState | null {
+    const state = this.states.get(sessionId);
+    if (!state) {
       return null;
     }
 
     const now = Date.now();
 
-    this.state = {
-      ...this.state,
-      kind: options.kind ?? this.state.kind,
-      expectedInput: options.expectedInput ?? this.state.expectedInput,
+    const nextState: InteractionState = {
+      ...state,
+      kind: options.kind ?? state.kind,
+      expectedInput: options.expectedInput ?? state.expectedInput,
       allowedCommands:
         options.allowedCommands !== undefined
           ? normalizeAllowedCommands(options.allowedCommands)
-          : [...this.state.allowedCommands],
-      metadata: options.metadata ? { ...options.metadata } : { ...this.state.metadata },
+          : [...state.allowedCommands],
+      metadata: options.metadata ? { ...options.metadata } : { ...state.metadata },
       expiresAt:
         options.expiresInMs === undefined
-          ? this.state.expiresAt
+          ? state.expiresAt
           : options.expiresInMs === null
             ? null
             : now + options.expiresInMs,
     };
 
+    this.states.set(sessionId, nextState);
+
     logger.debug(
-      `[InteractionManager] Transitioned interaction: kind=${this.state.kind}, expectedInput=${this.state.expectedInput}, allowedCommands=${this.state.allowedCommands.join(",") || "none"}`,
+      `[InteractionManager] Transitioned interaction: kind=${nextState.kind}, expectedInput=${nextState.expectedInput}, allowedCommands=${nextState.allowedCommands.join(",") || "none"}, session=${sessionId}`,
     );
 
-    return cloneState(this.state);
+    return cloneState(nextState);
   }
 
-  clear(reason: InteractionClearReason = "manual"): void {
-    if (!this.state) {
-      return;
+  clear(reason: InteractionClearReason = "manual", sessionId?: string): void {
+    if (sessionId !== undefined) {
+      // Clear only the specified session
+      const state = this.states.get(sessionId);
+      if (!state) {
+        return;
+      }
+      logger.info(
+        `[InteractionManager] Cleared interaction: reason=${reason}, kind=${state.kind}, expectedInput=${state.expectedInput}, session=${sessionId}`,
+      );
+      this.states.delete(sessionId);
+    } else {
+      // Clear ALL sessions (used by test reset and global clear)
+      if (this.states.size === 0) {
+        return;
+      }
+      logger.info(
+        `[InteractionManager] Cleared ALL interactions: reason=${reason}, count=${this.states.size}`,
+      );
+      this.states.clear();
     }
-
-    logger.info(
-      `[InteractionManager] Cleared interaction: reason=${reason}, kind=${this.state.kind}, expectedInput=${this.state.expectedInput}`,
-    );
-
-    this.state = null;
   }
 }
 

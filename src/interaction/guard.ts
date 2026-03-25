@@ -94,16 +94,19 @@ function isAllowedRenameCancelCallback(input: NormalizedInput, state: Interactio
   );
 }
 
-export function resolveInteractionGuardDecision(input: NormalizedInput): GuardDecision {
-  const state = interactionManager.getSnapshot();
+export function resolveInteractionGuardDecision(
+  input: NormalizedInput,
+  sessionId: string = "default",
+): GuardDecision {
+  const state = interactionManager.getSnapshot(sessionId);
   const { inputType, command } = classifyIncomingInput(input);
 
   if (!state) {
     return createAllowDecision(inputType, null, command);
   }
 
-  if (interactionManager.isExpired()) {
-    interactionManager.clear("expired");
+  if (interactionManager.isExpired(Date.now(), sessionId)) {
+    interactionManager.clear("expired", sessionId);
     return createBlockDecision(inputType, state, "expired", command);
   }
 

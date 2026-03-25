@@ -117,6 +117,41 @@ class PermissionManager {
   }
 
   /**
+   * Get all permission requests for a specific session
+   */
+  getBySession(sessionId: string): PermissionRequest[] {
+    const results: PermissionRequest[] = [];
+    for (const request of this.state.requestsByMessageId.values()) {
+      if (request.sessionID === sessionId) {
+        results.push(request);
+      }
+    }
+    return results;
+  }
+
+  /**
+   * Get the first (most recent) active permission request for a session
+   */
+  getActiveForSession(sessionId: string): PermissionRequest | undefined {
+    // Iterate in reverse to get the most recent (last added)
+    const messageIds = Array.from(this.state.requestsByMessageId.keys());
+    for (let i = messageIds.length - 1; i >= 0; i--) {
+      const request = this.state.requestsByMessageId.get(messageIds[i]);
+      if (request && request.sessionID === sessionId) {
+        return request;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Check if there are active permission requests for a specific session
+   */
+  isActiveForSession(sessionId: string): boolean {
+    return this.getActiveForSession(sessionId) !== undefined;
+  }
+
+  /**
    * Clear state after reply
    */
   clear(): void {

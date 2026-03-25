@@ -2,8 +2,8 @@ import { Question, QuestionState, QuestionAnswer } from "./types.js";
 import type { PlatformMessageRef } from "../platform/types.js";
 import { logger } from "../utils/logger.js";
 
-class QuestionManager {
-  private state: QuestionState = {
+function createEmptyState(): QuestionState {
+  return {
     questions: [],
     currentIndex: 0,
     selectedOptions: new Map(),
@@ -14,22 +14,47 @@ class QuestionManager {
     isActive: false,
     requestID: null,
   };
+}
 
-  startQuestions(questions: Question[], requestID: string): void {
+function getState(states: Map<string, QuestionState>, sessionId: string): QuestionState {
+  let state = states.get(sessionId);
+  if (!state) {
+    state = createEmptyState();
+    states.set(sessionId, state);
+  }
+  return state;
+}
+
+function setState(
+  states: Map<string, QuestionState>,
+  sessionId: string,
+  state: QuestionState,
+): void {
+  states.set(sessionId, state);
+}
+
+class QuestionManager {
+  private states: Map<string, QuestionState> = new Map();
+
+  startQuestions(questions: Question[], requestID: string, sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
     logger.debug(
-      `[QuestionManager] startQuestions called: isActive=${this.state.isActive}, currentQuestions=${this.state.questions.length}, newQuestions=${questions.length}, requestID=${requestID}`,
+      `[QuestionManager] startQuestions called: session=${sessionId}, isActive=${state.isActive}, currentQuestions=${state.questions.length}, newQuestions=${questions.length}, requestID=${requestID}`,
     );
 
-    if (this.state.isActive) {
-      logger.info(`[QuestionManager] Poll already active! Forcing reset before starting new poll.`);
+    if (state.isActive) {
+      logger.info(
+        `[QuestionManager] Poll already active for session ${sessionId}! Forcing reset before starting new poll.`,
+      );
       // Force-reset the previous poll before starting a new one
-      this.clear();
+      this.clear(sessionId);
     }
 
     logger.info(
-      `[QuestionManager] Starting new poll with ${questions.length} questions, requestID=${requestID}`,
+      `[QuestionManager] Starting new poll for session ${sessionId} with ${questions.length} questions, requestID=${requestID}`,
     );
-    this.state = {
+
+    setState(this.states, sessionId, {
       questions,
       currentIndex: 0,
       selectedOptions: new Map(),
@@ -39,31 +64,34 @@ class QuestionManager {
       messageIds: [],
       isActive: true,
       requestID,
-    };
+    });
   }
 
-  getRequestID(): string | null {
-    return this.state.requestID;
+  getRequestID(sessionId: string = "default"): string | null {
+    const state = getState(this.states, sessionId);
+    return state.requestID;
   }
 
-  getCurrentQuestion(): Question | null {
-    if (this.state.currentIndex >= this.state.questions.length) {
+  getCurrentQuestion(sessionId: string = "default"): Question | null {
+    const state = getState(this.states, sessionId);
+    if (state.currentIndex >= state.questions.length) {
       return null;
     }
-    return this.state.questions[this.state.currentIndex];
+    return state.questions[state.currentIndex];
   }
 
-  selectOption(questionIndex: number, optionIndex: number): void {
-    if (!this.state.isActive) {
+  selectOption(questionIndex: number, optionIndex: number, sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
+    if (!state.isActive) {
       return;
     }
 
-    const question = this.state.questions[questionIndex];
+    const question = state.questions[questionIndex];
     if (!question) {
       return;
     }
 
-    const selected = this.state.selectedOptions.get(questionIndex) || new Set();
+    const selected = state.selectedOptions.get(questionIndex) || new Set();
 
     if (question.multiple) {
       if (selected.has(optionIndex)) {
@@ -76,24 +104,26 @@ class QuestionManager {
       selected.add(optionIndex);
     }
 
-    this.state.selectedOptions.set(questionIndex, selected);
+    state.selectedOptions.set(questionIndex, selected);
 
     logger.debug(
-      `[QuestionManager] Selected options for question ${questionIndex}: ${Array.from(selected).join(", ")}`,
+      `[QuestionManager] Selected options for question ${questionIndex} in session ${sessionId}: ${Array.from(selected).join(", ")}`,
     );
   }
 
-  getSelectedOptions(questionIndex: number): Set<number> {
-    return this.state.selectedOptions.get(questionIndex) || new Set();
+  getSelectedOptions(questionIndex: number, sessionId: string = "default"): Set<number> {
+    const state = getState(this.states, sessionId);
+    return state.selectedOptions.get(questionIndex) || new Set();
   }
 
-  getSelectedAnswer(questionIndex: number): string {
-    const question = this.state.questions[questionIndex];
+  getSelectedAnswer(questionIndex: number, sessionId: string = "default"): string {
+    const state = getState(this.states, sessionId);
+    const question = state.questions[questionIndex];
     if (!question) {
       return "";
     }
 
-    const selected = this.state.selectedOptions.get(questionIndex) || new Set();
+    const selected = state.selectedOptions.get(questionIndex) || new Set();
     const options = Array.from(selected)
       .map((idx) => question.options[idx])
       .filter((opt) => opt)
@@ -102,118 +132,143 @@ class QuestionManager {
     return options.join("\n");
   }
 
-  setCustomAnswer(questionIndex: number, answer: string): void {
+  setCustomAnswer(questionIndex: number, answer: string, sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
     logger.debug(
-      `[QuestionManager] Custom answer received for question ${questionIndex}: ${answer}`,
+      `[QuestionManager] Custom answer received for question ${questionIndex} in session ${sessionId}: ${answer}`,
     );
-    this.state.customAnswers.set(questionIndex, answer);
+    state.customAnswers.set(questionIndex, answer);
   }
 
-  getCustomAnswer(questionIndex: number): string | undefined {
-    return this.state.customAnswers.get(questionIndex);
+  getCustomAnswer(questionIndex: number, sessionId: string = "default"): string | undefined {
+    const state = getState(this.states, sessionId);
+    return state.customAnswers.get(questionIndex);
   }
 
-  hasCustomAnswer(questionIndex: number): boolean {
-    return this.state.customAnswers.has(questionIndex);
+  hasCustomAnswer(questionIndex: number, sessionId: string = "default"): boolean {
+    const state = getState(this.states, sessionId);
+    return state.customAnswers.has(questionIndex);
   }
 
-  nextQuestion(): void {
-    this.state.currentIndex++;
-    this.state.customInputQuestionIndex = null;
-    this.state.activeMessageId = null;
+  nextQuestion(sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
+    state.currentIndex++;
+    state.customInputQuestionIndex = null;
+    state.activeMessageId = null;
 
     logger.debug(
-      `[QuestionManager] Moving to next question: ${this.state.currentIndex}/${this.state.questions.length}`,
+      `[QuestionManager] Moving to next question in session ${sessionId}: ${state.currentIndex}/${state.questions.length}`,
     );
   }
 
-  hasNextQuestion(): boolean {
-    return this.state.currentIndex < this.state.questions.length;
+  hasNextQuestion(sessionId: string = "default"): boolean {
+    const state = getState(this.states, sessionId);
+    return state.currentIndex < state.questions.length;
   }
 
-  getCurrentIndex(): number {
-    return this.state.currentIndex;
+  getCurrentIndex(sessionId: string = "default"): number {
+    const state = getState(this.states, sessionId);
+    return state.currentIndex;
   }
 
-  getTotalQuestions(): number {
-    return this.state.questions.length;
+  getTotalQuestions(sessionId: string = "default"): number {
+    const state = getState(this.states, sessionId);
+    return state.questions.length;
   }
 
-  addMessageId(messageId: PlatformMessageRef): void {
-    this.state.messageIds.push(messageId);
+  // Overload for backward compatibility: addMessageId(messageId: number) — original signature
+  addMessageId(messageId: number | PlatformMessageRef, sessionId?: string): void;
+  // Overload for new API: addMessageId(messageId, sessionId)
+  addMessageId(messageId: number | PlatformMessageRef, sessionId?: string): void {
+    const sid = sessionId ?? "default";
+    const state = getState(this.states, sid);
+    state.messageIds.push(messageId as PlatformMessageRef);
   }
 
-  setActiveMessageId(messageId: PlatformMessageRef): void {
-    this.state.activeMessageId = messageId;
+  setActiveMessageId(messageId: number | PlatformMessageRef | null, sessionId?: string): void {
+    const sid = sessionId ?? "default";
+    const state = getState(this.states, sid);
+    state.activeMessageId = messageId as PlatformMessageRef;
   }
 
-  getActiveMessageId(): PlatformMessageRef | null {
-    return this.state.activeMessageId;
+  getActiveMessageId(sessionId?: string): PlatformMessageRef | null {
+    const state = getState(this.states, sessionId ?? "default");
+    return state.activeMessageId;
   }
 
-  isActiveMessage(messageId: PlatformMessageRef | null): boolean {
-    return (
-      this.state.isActive &&
-      this.state.activeMessageId !== null &&
-      messageId === this.state.activeMessageId
-    );
+  isActiveMessage(
+    messageId: number | PlatformMessageRef | null,
+    sessionId: string = "default",
+  ): boolean {
+    const state = getState(this.states, sessionId);
+    return state.isActive && state.activeMessageId !== null && messageId === state.activeMessageId;
   }
 
-  startCustomInput(questionIndex: number): void {
-    if (!this.state.isActive || !this.state.questions[questionIndex]) {
+  startCustomInput(questionIndex: number, sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
+    if (!state.isActive || !state.questions[questionIndex]) {
       return;
     }
 
-    this.state.customInputQuestionIndex = questionIndex;
+    state.customInputQuestionIndex = questionIndex;
   }
 
-  clearCustomInput(): void {
-    this.state.customInputQuestionIndex = null;
+  clearCustomInput(sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
+    state.customInputQuestionIndex = null;
   }
 
-  isWaitingForCustomInput(questionIndex: number): boolean {
-    return this.state.customInputQuestionIndex === questionIndex;
+  isWaitingForCustomInput(questionIndex: number, sessionId: string = "default"): boolean {
+    const state = getState(this.states, sessionId);
+    return state.customInputQuestionIndex === questionIndex;
   }
 
-  getMessageIds(): PlatformMessageRef[] {
-    return [...this.state.messageIds];
+  getMessageIds(sessionId: string = "default"): PlatformMessageRef[] {
+    const state = getState(this.states, sessionId);
+    return [...state.messageIds];
   }
 
-  isActive(): boolean {
+  isActive(sessionId: string = "default"): boolean {
+    const state = getState(this.states, sessionId);
     logger.debug(
-      `[QuestionManager] isActive check: ${this.state.isActive}, questions=${this.state.questions.length}, currentIndex=${this.state.currentIndex}`,
+      `[QuestionManager] isActive check for session ${sessionId}: ${state.isActive}, questions=${state.questions.length}, currentIndex=${state.currentIndex}`,
     );
-    return this.state.isActive;
+    return state.isActive;
   }
 
-  cancel(): void {
-    logger.info("[QuestionManager] Poll cancelled");
-    this.state.isActive = false;
-    this.state.customInputQuestionIndex = null;
-    this.state.activeMessageId = null;
+  cancel(sessionId: string = "default"): void {
+    const state = getState(this.states, sessionId);
+    logger.info(`[QuestionManager] Poll cancelled for session ${sessionId}`);
+    state.isActive = false;
+    state.customInputQuestionIndex = null;
+    state.activeMessageId = null;
   }
 
-  clear(): void {
-    this.state = {
-      questions: [],
-      currentIndex: 0,
-      selectedOptions: new Map(),
-      customAnswers: new Map(),
-      customInputQuestionIndex: null,
-      activeMessageId: null,
-      messageIds: [],
-      isActive: false,
-      requestID: null,
-    };
+  /**
+   * Clear question state.
+   * If sessionId is provided, clears only that session's state.
+   * If sessionId is undefined, clears ALL sessions.
+   */
+  clear(sessionId?: string): void {
+    if (sessionId !== undefined) {
+      const state = getState(this.states, sessionId);
+      const cleared = createEmptyState();
+      setState(this.states, sessionId, cleared);
+      logger.debug(`[QuestionManager] Cleared question state for session ${sessionId}`);
+    } else {
+      this.states.clear();
+      logger.debug(`[QuestionManager] Cleared question state for all sessions`);
+    }
   }
 
-  getAllAnswers(): QuestionAnswer[] {
+  getAllAnswers(sessionId: string = "default"): QuestionAnswer[] {
+    const state = getState(this.states, sessionId);
     const answers: QuestionAnswer[] = [];
 
-    for (let i = 0; i < this.state.questions.length; i++) {
-      const question = this.state.questions[i];
-      const selectedAnswer = this.getSelectedAnswer(i);
-      const customAnswer = this.getCustomAnswer(i);
+    for (let i = 0; i < state.questions.length; i++) {
+      const question = state.questions[i];
+      const selectedAnswer = this.getSelectedAnswer(i, sessionId);
+      const customAnswer = this.getCustomAnswer(i, sessionId);
 
       const finalAnswer = customAnswer || selectedAnswer;
 
