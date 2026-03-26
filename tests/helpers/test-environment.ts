@@ -12,7 +12,7 @@ function getDefaultTestHome(): string {
   } catch {
     const fallbackPath = path.join(
       os.tmpdir(),
-      "opencode-telegram-bot",
+      "opencode-chat-assistant",
       "test-home",
       `${process.pid}-${workerId}`,
     );
@@ -22,7 +22,7 @@ function getDefaultTestHome(): string {
 }
 
 const TEST_ENV_DEFAULTS: Record<string, string> = {
-  OPENCODE_TELEGRAM_HOME: getDefaultTestHome(),
+  OPENCODE_CHAT_ASSISTANT_HOME: getDefaultTestHome(),
 };
 
 export function ensureTestEnvironment(): void {
@@ -32,12 +32,12 @@ export function ensureTestEnvironment(): void {
     }
   }
 
-  const configPath = path.join(process.env.OPENCODE_TELEGRAM_HOME!, "config.yaml");
+  const configPath = path.join(process.env.OPENCODE_CHAT_ASSISTANT_HOME!, "config.yaml");
   if (!fs.existsSync(configPath)) {
     const dummyConfig = `
-telegram:
-  token: "test-telegram-token"
-  allowedUserId: 123456789
+discord:
+  token: "test-discord-token"
+  serverId: "123456789012345678"
 opencode:
   apiUrl: "http://localhost:4096"
 server:
