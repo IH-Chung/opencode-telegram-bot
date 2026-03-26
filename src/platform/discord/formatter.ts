@@ -12,7 +12,7 @@ import { EmbedBuilder } from "discord.js";
 export const DISCORD_MESSAGE_LIMIT = 2000;
 
 /**
- * Regex pattern to match MarkdownV2 escape sequences (backslash + special char).
+ * Regex pattern to match markdown escape sequences (backslash + special char).
  * Matches backslash followed by any of the special characters.
  */
 const MARKDOWN_V2_ESCAPE_PATTERN = /\\([_*[\]()~`>#\-+=|{}.!])/g;

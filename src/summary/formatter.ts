@@ -5,12 +5,10 @@ import type { MessageFormatMode } from "../config.js";
 import { logger } from "../utils/logger.js";
 import { t } from "../i18n/index.js";
 import { getCurrentProject } from "../settings/manager.js";
-import { TELEGRAM_FORMAT_CONFIG } from "../platform/telegram/formatter.js";
+import { DISCORD_FORMAT_CONFIG } from "../platform/discord/formatter.js";
 
-// Re-export for backward compat (other files may use these)
-export { TELEGRAM_MESSAGE_LIMIT } from "../platform/telegram/formatter.js";
-export { getAssistantParseMode } from "../platform/telegram/formatter.js";
-export { TELEGRAM_FORMAT_CONFIG } from "../platform/telegram/formatter.js";
+// Discord is now the only platform
+export { DISCORD_MESSAGE_LIMIT } from "../platform/discord/formatter.js";
 
 /**
  * Configuration for platform-specific message formatting.
@@ -108,8 +106,8 @@ export function formatSummaryWithMode(
     }
 
     if (mode === "markdown") {
-      // Use injected formatter, or Telegram as default
-      const formatter = formatMarkdownFn ?? TELEGRAM_FORMAT_CONFIG.formatMarkdown;
+      // Use injected formatter, or Discord as default
+      const formatter = formatMarkdownFn ?? DISCORD_FORMAT_CONFIG.formatMarkdown;
       const converted = formatter(trimmed);
       const convertedParts = splitText(converted, effectiveMaxLength);
 

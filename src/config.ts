@@ -5,8 +5,6 @@ import { normalizeLocale, setRuntimeLocale, type Locale } from "./i18n/index.js"
 
 const runtimePaths = getRuntimePaths();
 
-export type Platform = "telegram" | "discord";
-
 function parseCommaSeparatedNumbers(value: string): number[] {
   return value
     .split(",")
@@ -208,19 +206,7 @@ function getOptionalMessageFormatModeValue(
 }
 
 export function buildConfig(raw: Record<string, unknown>) {
-  const platform: Platform =
-    (getStringValue(raw, "platform", false).toLowerCase() as Platform) || "telegram";
-
-  // When platform is discord, telegram fields are optional
-  const telegramRequired = platform === "telegram";
-
   return {
-    platform,
-    telegram: {
-      token: getStringValue(raw, "telegram.token", telegramRequired),
-      allowedUserId: parseInt(getStringValue(raw, "telegram.allowedUserId", telegramRequired), 10),
-      proxyUrl: getStringValue(raw, "telegram.proxyUrl", false),
-    },
     opencode: {
       apiUrl: getStringValue(raw, "opencode.apiUrl", false) || "http://localhost:4096",
       username: getStringValue(raw, "opencode.username", false) || "opencode",
@@ -251,15 +237,9 @@ export function buildConfig(raw: Record<string, unknown>) {
     files: {
       maxFileSizeKb: getOptionalPositiveIntValue(raw, "files.maxFileSizeKb", 100),
     },
-    stt: {
-      apiUrl: getStringValue(raw, "stt.apiUrl", false),
-      apiKey: getStringValue(raw, "stt.apiKey", false),
-      model: getStringValue(raw, "stt.model", false) || "whisper-large-v3-turbo",
-      language: getStringValue(raw, "stt.language", false),
-    },
     discord: {
-      token: getStringValue(raw, "discord.token", false),
-      serverId: getStringValue(raw, "discord.serverId", false),
+      token: getStringValue(raw, "discord.token", true),
+      serverId: getStringValue(raw, "discord.serverId", true),
       allowedRoleIds: getStringListValue(raw, "discord.allowedRoleIds"),
       allowedUserIds: getNumberListValue(raw, "discord.allowedUserIds"),
     },

@@ -1,7 +1,7 @@
 /**
  * Polls the `/question` API to discover pending questions that the SSE
  * event stream might have missed. This ensures questions triggered from
- * the GUI are always visible in Telegram, even if the `question.asked`
+ * the GUI are always visible in chat, even if the `question.asked`
  * SSE event was lost due to timing or reconnection.
  */
 

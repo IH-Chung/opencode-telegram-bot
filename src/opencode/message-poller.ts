@@ -1,6 +1,6 @@
 /**
  * Polls `session.messages()` to detect assistant replies produced outside
- * the Telegram bot (e.g. from the OpenCode GUI or TUI).
+ * the bot (e.g. from the OpenCode GUI or TUI).
  *
  * The SSE event stream may not always deliver `message.part.updated` /
  * `message.updated` events for sessions driven by external clients.

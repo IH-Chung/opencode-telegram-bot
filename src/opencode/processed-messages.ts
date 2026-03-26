@@ -1,5 +1,5 @@
 /**
- * Shared tracker for assistant message IDs already forwarded to Telegram.
+ * Shared tracker for assistant message IDs already forwarded to chat.
  *
  * Used to coordinate the SSE-based aggregator and the REST-based message
  * poller so that a completed assistant reply is never sent twice.
