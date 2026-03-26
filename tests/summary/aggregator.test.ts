@@ -546,4 +546,85 @@ describe("summary/aggregator", () => {
     expect(isMessageProcessed("msg-mark-test")).toBe(true);
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
+
+  describe("session.updated handling", () => {
+    it("fires onSessionUpdated callback when session.updated received for active session", async () => {
+      // @ts-expect-error — setOnSessionUpdated not implemented yet (RED phase)
+      const onSessionUpdated = vi.fn();
+      // @ts-expect-error
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-1",
+            title: "Short story request",
+            slug: "short-story-request",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).toHaveBeenCalledWith("session-1", "Short story request");
+    });
+
+    it("does not fire onSessionUpdated for inactive session", async () => {
+      // @ts-expect-error
+      const onSessionUpdated = vi.fn();
+      // @ts-expect-error
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+
+      // Process session.updated for a DIFFERENT session
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-2",
+            title: "Different session",
+            slug: "different-session",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).not.toHaveBeenCalled();
+    });
+
+    it("does not fire onSessionUpdated when title is empty string", async () => {
+      // @ts-expect-error
+      const onSessionUpdated = vi.fn();
+      // @ts-expect-error
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-1",
+            title: "",
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).not.toHaveBeenCalled();
+    });
+  });
 });
