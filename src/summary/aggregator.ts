@@ -81,6 +81,8 @@ type ClearedCallback = () => void;
 
 type SessionIdleCallback = (sessionId: string) => void;
 
+type SessionUpdatedCallback = (sessionId: string, title: string) => void;
+
 interface PreparedToolFileContext {
   fileData: CodeFileData | null;
   fileChange: FileChange | null;
@@ -160,6 +162,7 @@ class SummaryAggregator {
   private onFileChangeCallback: FileChangeCallback | null = null;
   private onClearedCallback: ClearedCallback | null = null;
   private onSessionIdleCallback: SessionIdleCallback | null = null;
+  private onSessionUpdatedCallback: SessionUpdatedCallback | null = null;
   private typingIndicatorCallback: (() => Promise<void>) | null = null;
   private typingTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -233,6 +236,10 @@ class SummaryAggregator {
 
   setOnSessionIdle(callback: SessionIdleCallback): void {
     this.onSessionIdleCallback = callback;
+  }
+
+  setOnSessionUpdated(callback: SessionUpdatedCallback): void {
+    this.onSessionUpdatedCallback = callback;
   }
 
   setIsSessionActiveCallback(callback: IsSessionActiveCallback): void {
@@ -361,6 +368,9 @@ class SummaryAggregator {
         break;
       case "session.diff":
         this.handleSessionDiff(event);
+        break;
+      case "session.updated":
+        this.handleSessionUpdated(event as Event & { type: "session.updated" });
         break;
       case "permission.asked":
         this.handlePermissionAsked(event);
@@ -878,6 +888,31 @@ class SummaryAggregator {
       const cb = this.onSessionIdleCallback;
       setImmediate(() => cb(sessionID));
     }
+  }
+
+  private handleSessionUpdated(
+    event: Event & {
+      type: "session.updated";
+    },
+  ): void {
+    const properties = event.properties as { info: { id: string; title: string } };
+    const sessionId = properties.info.id;
+    const title = properties.info.title;
+
+    if (!this.isSessionActive(sessionId)) {
+      return;
+    }
+
+    if (!title || title.trim() === "") {
+      return;
+    }
+
+    if (!this.onSessionUpdatedCallback) {
+      return;
+    }
+
+    const cb = this.onSessionUpdatedCallback;
+    setImmediate(() => cb(sessionId, title));
   }
 
   private handleSessionCompacted(
