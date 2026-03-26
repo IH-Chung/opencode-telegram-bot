@@ -1,79 +1,80 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createPlatformBot, type PlatformBot } from "../../src/platform/index.js";
 
-vi.mock("../../src/platform/telegram/bot.js", () => ({
-  createBot: vi.fn(),
-  autoSubscribeEvents: vi.fn(),
+// Mock discord.js Client for type compatibility
+vi.mock("discord.js", () => ({
+  Client: vi.fn().mockImplementation(() => ({
+    login: vi.fn().mockResolvedValue(undefined),
+    on: vi.fn(),
+    once: vi.fn(),
+  })),
+  GatewayIntentBits: {
+    Guilds: 1,
+    GuildMessages: 2,
+    DirectMessages: 4,
+    MessageContent: 8,
+  },
+  Partials: {
+    Channel: 1,
+  },
+  Events: {
+    ClientReady: "ready",
+    InteractionCreate: "interactionCreate",
+    MessageCreate: "messageCreate",
+  },
+  ChannelType: {
+    DM: 1,
+    GuildText: 0,
+  },
+}));
+
+// Mock discord bot module
+vi.mock("../../src/platform/discord/bot.js", () => ({
+  createDiscordBot: vi.fn(),
+  autoSubscribeDiscordEvents: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe("platform/index", () => {
   describe("createPlatformBot", () => {
-    it("returns a PlatformBot with start() method for telegram", async () => {
-      const platformBot = createPlatformBot("telegram");
+    it("returns a PlatformBot with start() method", async () => {
+      const platformBot = createPlatformBot();
       expect(typeof platformBot.start).toBe("function");
     });
 
-    it("telegram factory calls createBot and autoSubscribeEvents", async () => {
-      const mockBot = {
-        api: {
-          getWebhookInfo: vi.fn().mockResolvedValue({ url: undefined }),
-          deleteWebhook: vi.fn(),
-        },
-        start: vi.fn(),
+    it("calls createDiscordBot and autoSubscribeDiscordEvents", async () => {
+      const mockClient = {
+        login: vi.fn().mockResolvedValue(undefined),
+        on: vi.fn(),
+        once: vi.fn(),
       };
 
-      const { createBot, autoSubscribeEvents } = await import("../../src/platform/telegram/bot.js");
-      vi.mocked(createBot).mockReturnValue(mockBot as never);
-      vi.mocked(autoSubscribeEvents).mockResolvedValue(undefined);
+      const { createDiscordBot, autoSubscribeDiscordEvents } =
+        await import("../../src/platform/discord/bot.js");
+      vi.mocked(createDiscordBot).mockReturnValue(mockClient as never);
 
-      const platformBot = createPlatformBot("telegram");
+      const platformBot = createPlatformBot();
       await platformBot.start();
 
-      expect(createBot).toHaveBeenCalledTimes(1);
-      expect(autoSubscribeEvents).toHaveBeenCalledTimes(1);
-      expect(autoSubscribeEvents).toHaveBeenCalledWith(mockBot);
-      expect(mockBot.start).toHaveBeenCalledTimes(1);
-    });
-
-    it("telegram factory removes webhook if present", async () => {
-      const mockBot = {
-        api: {
-          getWebhookInfo: vi.fn().mockResolvedValue({ url: "https://example.com/webhook" }),
-          deleteWebhook: vi.fn(),
-        },
-        start: vi.fn(),
-      };
-
-      const { createBot, autoSubscribeEvents } = await import("../../src/platform/telegram/bot.js");
-      vi.mocked(createBot).mockReturnValue(mockBot as never);
-      vi.mocked(autoSubscribeEvents).mockResolvedValue(undefined);
-
-      const platformBot = createPlatformBot("telegram");
-      await platformBot.start();
-
-      expect(mockBot.api.deleteWebhook).toHaveBeenCalledTimes(1);
-    });
-
-    it("throws Error with correct message for unknown platform", () => {
-      expect(() => createPlatformBot("unknown" as "telegram")).toThrow("Unknown platform: unknown");
+      expect(createDiscordBot).toHaveBeenCalledTimes(1);
+      expect(autoSubscribeDiscordEvents).toHaveBeenCalledTimes(1);
+      expect(autoSubscribeDiscordEvents).toHaveBeenCalledWith(mockClient);
+      expect(mockClient.login).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("PlatformBot interface", () => {
     it("start() returns Promise<void>", async () => {
-      const mockBot = {
-        api: {
-          getWebhookInfo: vi.fn().mockResolvedValue({ url: undefined }),
-          deleteWebhook: vi.fn(),
-        },
-        start: vi.fn(),
+      const mockClient = {
+        login: vi.fn().mockResolvedValue(undefined),
+        on: vi.fn(),
+        once: vi.fn(),
       };
 
-      const { createBot, autoSubscribeEvents } = await import("../../src/platform/telegram/bot.js");
-      vi.mocked(createBot).mockReturnValue(mockBot as never);
-      vi.mocked(autoSubscribeEvents).mockResolvedValue(undefined);
+      const { createDiscordBot, autoSubscribeDiscordEvents } =
+        await import("../../src/platform/discord/bot.js");
+      vi.mocked(createDiscordBot).mockReturnValue(mockClient as never);
 
-      const platformBot: PlatformBot = createPlatformBot("telegram");
+      const platformBot: PlatformBot = createPlatformBot();
       const result = platformBot.start();
       expect(result).toBeInstanceOf(Promise);
       await result;

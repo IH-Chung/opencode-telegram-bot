@@ -8,20 +8,20 @@ import {
 describe("runtime/bootstrap", () => {
   it("validates required runtime config values", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
+      discord: {
         token: "123456:abcdef",
-        allowedUserId: 123456789,
+        serverId: "123456789",
       },
     });
 
     expect(result).toEqual({ isValid: true });
   });
 
-  it("validates with string user id", () => {
+  it("validates with numeric serverId", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
+      discord: {
         token: "123456:abcdef",
-        allowedUserId: "123456789",
+        serverId: 123456789,
       },
     });
 
@@ -30,44 +30,43 @@ describe("runtime/bootstrap", () => {
 
   it("fails validation for missing token", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
-        allowedUserId: 123456789,
+      discord: {
+        serverId: "123456789",
       },
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.reason).toContain("telegram.token");
+    expect(result.reason).toContain("discord.token");
   });
 
-  it("fails validation for invalid user id", () => {
+  it("fails validation for missing serverId", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
+      discord: {
         token: "123456:abcdef",
-        allowedUserId: 0,
       },
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.reason).toContain("telegram.allowedUserId");
+    expect(result.reason).toContain("discord.serverId");
   });
 
-  it("fails validation for string zero user id", () => {
+  it("fails validation for empty token", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
-        token: "123456:abcdef",
-        allowedUserId: "0",
+      discord: {
+        token: "",
+        serverId: "123456789",
       },
     });
 
     expect(result.isValid).toBe(false);
-    expect(result.reason).toContain("telegram.allowedUserId");
+    expect(result.reason).toContain("discord.token");
   });
 
   it("fails validation for invalid api url", () => {
     const result = validateRuntimeConfigValues({
-      telegram: {
+      discord: {
         token: "123456:abcdef",
-        allowedUserId: 123456789,
+        serverId: "123456789",
       },
       opencode: {
         apiUrl: "not-a-url",
@@ -80,9 +79,11 @@ describe("runtime/bootstrap", () => {
 
   it("builds valid YAML with all wizard values", () => {
     const yaml = buildConfigYamlContent({
-      telegram: {
+      discord: {
         token: "123456:ABCdefGHI",
-        allowedUserId: "777",
+        serverId: "777888999",
+        allowedRoleIds: ["role1", "role2"],
+        allowedUserIds: [123456789, 987654321],
       },
       opencode: {
         apiUrl: "http://localhost:9090",
@@ -95,12 +96,14 @@ describe("runtime/bootstrap", () => {
     });
 
     const parsed = parseYaml(yaml) as Record<string, unknown>;
-    const telegram = parsed.telegram as Record<string, unknown>;
+    const discord = parsed.discord as Record<string, unknown>;
     const opencode = parsed.opencode as Record<string, unknown>;
     const bot = parsed.bot as Record<string, unknown>;
 
-    expect(telegram.token).toBe("123456:ABCdefGHI");
-    expect(telegram.allowedUserId).toBe(777);
+    expect(discord.token).toBe("123456:ABCdefGHI");
+    expect(discord.serverId).toBe("777888999");
+    expect(discord.allowedRoleIds).toEqual(["role1", "role2"]);
+    expect(discord.allowedUserIds).toEqual([123456789, 987654321]);
     expect(opencode.apiUrl).toBe("http://localhost:9090");
     expect(opencode.username).toBe("admin");
     expect(opencode.password).toBe("secret");
@@ -109,9 +112,9 @@ describe("runtime/bootstrap", () => {
 
   it("omits default opencode username and default bot locale", () => {
     const yaml = buildConfigYamlContent({
-      telegram: {
+      discord: {
         token: "token:value",
-        allowedUserId: "42",
+        serverId: "42",
       },
       opencode: {
         username: "opencode",
@@ -129,32 +132,32 @@ describe("runtime/bootstrap", () => {
 
   it("omits empty optional sections", () => {
     const yaml = buildConfigYamlContent({
-      telegram: {
+      discord: {
         token: "token:value",
-        allowedUserId: "42",
+        serverId: "42",
       },
     });
 
     const parsed = parseYaml(yaml) as Record<string, unknown>;
-    const telegram = parsed.telegram as Record<string, unknown>;
+    const discord = parsed.discord as Record<string, unknown>;
 
-    expect(telegram.token).toBe("token:value");
-    expect(telegram.allowedUserId).toBe(42);
+    expect(discord.token).toBe("token:value");
+    expect(discord.serverId).toBe("42");
     expect(parsed.opencode).toBeUndefined();
     expect(parsed.bot).toBeUndefined();
   });
 
   it("properly quotes tokens with colons in YAML output", () => {
     const yaml = buildConfigYamlContent({
-      telegram: {
+      discord: {
         token: "123456:ABCdef:extra",
-        allowedUserId: "999",
+        serverId: "999",
       },
     });
 
     // Re-parse should yield exact same token
     const parsed = parseYaml(yaml) as Record<string, unknown>;
-    const telegram = parsed.telegram as Record<string, unknown>;
-    expect(telegram.token).toBe("123456:ABCdef:extra");
+    const discord = parsed.discord as Record<string, unknown>;
+    expect(discord.token).toBe("123456:ABCdef:extra");
   });
 });

@@ -38,11 +38,12 @@ describe("summary/formatter", () => {
     expect(parts[0].endsWith("\n```")).toBe(true);
   });
 
-  it("formats markdown summaries for Telegram MarkdownV2 mode", () => {
+  it("formats markdown summaries for Discord markdown mode", () => {
     const text = "Check out this **amazing** library with *great* features!";
     const parts = formatSummaryWithMode(text, "markdown");
 
-    expect(parts).toEqual(["Check out this *amazing* library with _great_ features\\!"]);
+    // Discord strips MarkdownV2 escape backslashes but preserves standard markdown
+    expect(parts).toEqual(["Check out this **amazing** library with *great* features!"]);
   });
 
   it("does not wrap long markdown summaries in code blocks", () => {
@@ -53,7 +54,7 @@ describe("summary/formatter", () => {
     expect(parts[0].endsWith("\n```")).toBe(false);
   });
 
-  it("adapts headings, quotes, tables and horizontal rules for Telegram", () => {
+  it("adapts headings, quotes, tables and horizontal rules for Discord", () => {
     const text = [
       "# Main heading",
       "",
@@ -70,23 +71,25 @@ describe("summary/formatter", () => {
     const parts = formatSummaryWithMode(text, "markdown");
 
     expect(parts).toHaveLength(1);
-    expect(parts[0]).toContain("*Main heading*");
-    expect(parts[0]).toContain("> This is a quote\\.");
-    expect(parts[0]).toContain("> Quote continues on next line\\.");
+    // Discord formatter preserves raw markdown - just strips MarkdownV2 escape backslashes
+    expect(parts[0]).toContain("# Main heading");
+    expect(parts[0]).toContain("> This is a quote.");
+    expect(parts[0]).toContain("Quote continues on next line.");
     expect(parts[0]).toContain("| Header 1 | Header 2 |");
     expect(parts[0]).toContain("| Cell A | Cell B |");
     expect(parts[0]).not.toContain("```\nHeader 1");
-    expect(parts[0]).toContain("──────────");
+    expect(parts[0]).toContain("---");
   });
 
-  it("renders markdown checklists as visual checkboxes", () => {
+  it("renders markdown checklists as-is for Discord", () => {
     const text = ["- [ ] Open task", "- [x] Done task", "1. [ ] Numbered task"].join("\n");
     const parts = formatSummaryWithMode(text, "markdown");
 
+    // Discord formatter passes through markdown as-is (no emoji replacement)
     expect(parts).toHaveLength(1);
-    expect(parts[0]).toContain("🔲 Open task");
-    expect(parts[0]).toContain("✅ Done task");
-    expect(parts[0]).toContain("🔲 Numbered task");
+    expect(parts[0]).toContain("- [ ] Open task");
+    expect(parts[0]).toContain("- [x] Done task");
+    expect(parts[0]).toContain("1. [ ] Numbered task");
   });
 
   it("formats todowrite tool metadata", () => {

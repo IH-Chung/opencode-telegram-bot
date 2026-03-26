@@ -1,15 +1,9 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { createPlatformBot } from "../../src/platform/index.js";
 
 // Mock config module to provide required config values
 vi.mock("../../src/config.js", () => ({
   config: {
-    platform: "telegram",
-    telegram: {
-      token: "test-telegram-token",
-      allowedUserId: 123456789,
-      proxyUrl: "",
-    },
     opencode: {
       apiUrl: "http://localhost:4096",
       username: "opencode",
@@ -31,15 +25,9 @@ vi.mock("../../src/config.js", () => ({
     files: {
       maxFileSizeKb: 100,
     },
-    stt: {
-      apiUrl: "",
-      apiKey: "",
-      model: "whisper-large-v3-turbo",
-      language: "",
-    },
     discord: {
       token: "test-discord-token",
-      serverId: "",
+      serverId: "123456789",
       allowedRoleIds: [],
       allowedUserIds: [],
     },
@@ -81,19 +69,13 @@ vi.mock("discord.js", () => ({
 
 describe("platform/integration", () => {
   describe("createPlatformBot dispatch", () => {
-    it("returns PlatformBot with start() for telegram platform", async () => {
-      const platformBot = createPlatformBot("telegram");
+    it("returns PlatformBot with start()", async () => {
+      const platformBot = createPlatformBot();
       expect(platformBot).toBeDefined();
       expect(typeof platformBot.start).toBe("function");
     });
 
-    it("returns PlatformBot with start() for discord platform", async () => {
-      const platformBot = createPlatformBot("discord");
-      expect(platformBot).toBeDefined();
-      expect(typeof platformBot.start).toBe("function");
-    });
-
-    it("discord start() calls createDiscordBot, autoSubscribeDiscordEvents, and client.login", async () => {
+    it("start() calls createDiscordBot, autoSubscribeDiscordEvents, and client.login", async () => {
       const mockClient = {
         login: vi.fn().mockResolvedValue(undefined),
         on: vi.fn(),
@@ -104,7 +86,7 @@ describe("platform/integration", () => {
         await import("../../src/platform/discord/bot.js");
       vi.mocked(createDiscordBot).mockReturnValue(mockClient as never);
 
-      const platformBot = createPlatformBot("discord");
+      const platformBot = createPlatformBot();
       await platformBot.start();
 
       expect(createDiscordBot).toHaveBeenCalledTimes(1);
@@ -112,10 +94,6 @@ describe("platform/integration", () => {
       expect(autoSubscribeDiscordEvents).toHaveBeenCalledWith(mockClient);
       expect(mockClient.login).toHaveBeenCalledTimes(1);
       expect(mockClient.login).toHaveBeenCalledWith("test-discord-token");
-    });
-
-    it("throws for unknown platform", () => {
-      expect(() => createPlatformBot("unknown" as "telegram")).toThrow("Unknown platform: unknown");
     });
   });
 });

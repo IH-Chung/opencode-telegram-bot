@@ -14,13 +14,13 @@ function setPlatform(platform: NodeJS.Platform): () => void {
 
 describe("runtime/paths", () => {
   beforeEach(() => {
-    delete process.env.OPENCODE_TELEGRAM_HOME;
+    delete process.env.OPENCODE_CHAT_ASSISTANT_HOME;
     delete process.env.APPDATA;
     setRuntimeMode("sources");
   });
 
   afterEach(() => {
-    delete process.env.OPENCODE_TELEGRAM_RUNTIME_MODE;
+    delete process.env.OPENCODE_CHAT_ASSISTANT_RUNTIME_MODE;
     vi.unstubAllEnvs();
   });
 
@@ -35,10 +35,10 @@ describe("runtime/paths", () => {
     expect(runtimePaths.settingsFilePath).toBe(path.join(process.cwd(), "settings.json"));
   });
 
-  it("uses OPENCODE_TELEGRAM_HOME when override is set", () => {
+  it("uses OPENCODE_CHAT_ASSISTANT_HOME when override is set", () => {
     const customHome = path.join(process.cwd(), ".tmp", "runtime-home");
     setRuntimeMode("installed");
-    vi.stubEnv("OPENCODE_TELEGRAM_HOME", customHome);
+    vi.stubEnv("OPENCODE_CHAT_ASSISTANT_HOME", customHome);
 
     const runtimePaths = getRuntimePaths();
 
@@ -57,7 +57,7 @@ describe("runtime/paths", () => {
 
       expect(runtimePaths.mode).toBe("installed");
       expect(runtimePaths.appHome).toBe(
-        path.join("C:\\Users\\test\\AppData\\Roaming", "opencode-telegram-bot"),
+        path.join("C:\\Users\\test\\AppData\\Roaming", "opencode-chat-assistant"),
       );
       expect(runtimePaths.logsDirPath).toBe(path.join(runtimePaths.appHome, "logs"));
     } finally {

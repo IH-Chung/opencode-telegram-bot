@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 
 import { createPlatformBot } from "../platform/index.js";
-import { config } from "../config.js";
 import { loadSettings } from "../settings/manager.js";
 import { processManager } from "../process/manager.js";
 import { warmupSessionDirectoryCache } from "../session/cache-manager.js";

@@ -3,13 +3,13 @@ import { buildConfig } from "../src/config.js";
 
 describe("discord config parsing", () => {
   const baseConfig = {
-    telegram: { token: "test-telegram-token", allowedUserId: "123456789" },
+    discord: { token: "test-discord-token", serverId: "123456789" },
   };
 
   it("parses allowedRoleIds as comma-separated string", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedRoleIds: "role1,role2,role3" },
+      discord: { ...baseConfig.discord, allowedRoleIds: "role1,role2,role3" },
     });
 
     expect(config.discord.allowedRoleIds).toEqual(["role1", "role2", "role3"]);
@@ -18,7 +18,7 @@ describe("discord config parsing", () => {
   it("parses allowedRoleIds as YAML array", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedRoleIds: ["role1", "role2", "role3"] },
+      discord: { ...baseConfig.discord, allowedRoleIds: ["role1", "role2", "role3"] },
     });
 
     expect(config.discord.allowedRoleIds).toEqual(["role1", "role2", "role3"]);
@@ -27,7 +27,7 @@ describe("discord config parsing", () => {
   it("parses allowedUserIds as comma-separated string", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedUserIds: "123456789,987654321,111222333" },
+      discord: { ...baseConfig.discord, allowedUserIds: "123456789,987654321,111222333" },
     });
 
     expect(config.discord.allowedUserIds).toEqual([123456789, 987654321, 111222333]);
@@ -36,7 +36,7 @@ describe("discord config parsing", () => {
   it("parses allowedUserIds as YAML array", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedUserIds: [123456789, 987654321] },
+      discord: { ...baseConfig.discord, allowedUserIds: [123456789, 987654321] },
     });
 
     expect(config.discord.allowedUserIds).toEqual([123456789, 987654321]);
@@ -45,7 +45,7 @@ describe("discord config parsing", () => {
   it("parses allowedUserIds as YAML array of strings", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedUserIds: ["123456789", "987654321"] },
+      discord: { ...baseConfig.discord, allowedUserIds: ["123456789", "987654321"] },
     });
 
     expect(config.discord.allowedUserIds).toEqual([123456789, 987654321]);
@@ -61,7 +61,7 @@ describe("discord config parsing", () => {
   it("filters empty strings from allowedRoleIds (comma-separated)", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedRoleIds: "role1,,role2," },
+      discord: { ...baseConfig.discord, allowedRoleIds: "role1,,role2," },
     });
 
     expect(config.discord.allowedRoleIds).toEqual(["role1", "role2"]);
@@ -70,7 +70,7 @@ describe("discord config parsing", () => {
   it("filters empty strings from allowedRoleIds (YAML array)", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { allowedRoleIds: ["role1", "", "role2", ""] },
+      discord: { ...baseConfig.discord, allowedRoleIds: ["role1", "", "role2", ""] },
     });
 
     expect(config.discord.allowedRoleIds).toEqual(["role1", "role2"]);
@@ -79,16 +79,16 @@ describe("discord config parsing", () => {
   it("uses serverId instead of guildId", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { serverId: "123456789" },
+      discord: { ...baseConfig.discord, serverId: "999888777" },
     });
 
-    expect(config.discord.serverId).toBe("123456789");
+    expect(config.discord.serverId).toBe("999888777");
   });
 
   it("does not include channelId or guildId in config", () => {
     const config = buildConfig({
       ...baseConfig,
-      discord: { serverId: "123456789" },
+      discord: { ...baseConfig.discord, serverId: "999888777" },
     });
 
     expect(config.discord).not.toHaveProperty("channelId");
@@ -98,9 +98,9 @@ describe("discord config parsing", () => {
 
 describe("config boolean parsing", () => {
   const baseConfig = {
-    telegram: {
-      token: "test-telegram-token",
-      allowedUserId: "123456789",
+    discord: {
+      token: "test-discord-token",
+      serverId: "123456789",
     },
   };
 
@@ -214,7 +214,7 @@ describe("config boolean parsing", () => {
 
 describe("config maxActiveSessions parsing", () => {
   const baseConfig = {
-    telegram: { token: "test-telegram-token", allowedUserId: "123456789" },
+    discord: { token: "test-discord-token", serverId: "123456789" },
   };
 
   it("uses default value of 10 when not specified", () => {

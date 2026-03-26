@@ -17,7 +17,7 @@ describe("platform/types", () => {
     });
 
     it("toMessageRef converts number to string", () => {
-      // Telegram message IDs are numbers; adapter converts to string
+      // Discord message IDs are numbers; adapter converts to string
       const numericId = 12345;
       const ref: PlatformMessageRef = String(numericId);
       expect(ref).toBe("12345");
@@ -67,17 +67,6 @@ describe("platform/types", () => {
   });
 
   describe("PlatformInfo", () => {
-    it("holds telegram info correctly", () => {
-      const info: PlatformInfo = {
-        platform: "telegram",
-        messageMaxLength: 4096,
-        documentCaptionMaxLength: 1024,
-      };
-      expect(info.platform).toBe("telegram");
-      expect(info.messageMaxLength).toBe(4096);
-      expect(info.documentCaptionMaxLength).toBe(1024);
-    });
-
     it("holds discord info correctly", () => {
       const info: PlatformInfo = {
         platform: "discord",
@@ -85,6 +74,8 @@ describe("platform/types", () => {
         documentCaptionMaxLength: 2000,
       };
       expect(info.platform).toBe("discord");
+      expect(info.messageMaxLength).toBe(2000);
+      expect(info.documentCaptionMaxLength).toBe(2000);
     });
   });
 
@@ -93,9 +84,9 @@ describe("platform/types", () => {
       // This is a compile-time test — if it compiles, the interface is implementable
       class MockAdapter implements PlatformAdapter {
         readonly info: PlatformInfo = {
-          platform: "telegram",
-          messageMaxLength: 4096,
-          documentCaptionMaxLength: 1024,
+          platform: "discord",
+          messageMaxLength: 2000,
+          documentCaptionMaxLength: 2000,
         };
         setChatId(_chatId: string): void {}
         sendMessage(_text: string, _options?: PlatformMessageOptions): Promise<PlatformMessageRef> {
@@ -123,12 +114,6 @@ describe("platform/types", () => {
         deleteMessage(_ref: PlatformMessageRef): Promise<void> {
           return Promise.resolve();
         }
-        pinMessage(_ref: PlatformMessageRef): Promise<void> {
-          return Promise.resolve();
-        }
-        unpinAllMessages(): Promise<void> {
-          return Promise.resolve();
-        }
         answerCallbackQuery(_id: string, _options?: PlatformCallbackQueryOptions): Promise<void> {
           return Promise.resolve();
         }
@@ -141,13 +126,19 @@ describe("platform/types", () => {
         getFileUrl(_fileId: string): Promise<string> {
           return Promise.resolve("https://example.com/file");
         }
+        addReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
+        }
+        removeReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
+        }
       }
 
       const adapter: PlatformAdapter = new MockAdapter();
-      expect(adapter.info.platform).toBe("telegram");
+      expect(adapter.info.platform).toBe("discord");
     });
 
-    it("adapter has all 12 required methods", () => {
+    it("adapter has all 14 required methods", () => {
       const requiredMethods = [
         "setChatId",
         "sendMessage",
@@ -155,19 +146,19 @@ describe("platform/types", () => {
         "sendPhoto",
         "editMessage",
         "deleteMessage",
-        "pinMessage",
-        "unpinAllMessages",
         "answerCallbackQuery",
         "sendTyping",
         "setCommands",
         "getFileUrl",
+        "addReaction",
+        "removeReaction",
       ];
 
       class MockAdapter implements PlatformAdapter {
         readonly info: PlatformInfo = {
-          platform: "telegram",
-          messageMaxLength: 4096,
-          documentCaptionMaxLength: 1024,
+          platform: "discord",
+          messageMaxLength: 2000,
+          documentCaptionMaxLength: 2000,
         };
         setChatId(_chatId: string): void {}
         sendMessage(_text: string, _options?: PlatformMessageOptions): Promise<PlatformMessageRef> {
@@ -195,12 +186,6 @@ describe("platform/types", () => {
         deleteMessage(_ref: PlatformMessageRef): Promise<void> {
           return Promise.resolve();
         }
-        pinMessage(_ref: PlatformMessageRef): Promise<void> {
-          return Promise.resolve();
-        }
-        unpinAllMessages(): Promise<void> {
-          return Promise.resolve();
-        }
         answerCallbackQuery(_id: string, _options?: PlatformCallbackQueryOptions): Promise<void> {
           return Promise.resolve();
         }
@@ -212,6 +197,12 @@ describe("platform/types", () => {
         }
         getFileUrl(_fileId: string): Promise<string> {
           return Promise.resolve("https://example.com/file");
+        }
+        addReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
+        }
+        removeReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
         }
       }
 
@@ -225,9 +216,9 @@ describe("platform/types", () => {
     it("readonly info property is accessible", () => {
       class MockAdapter implements PlatformAdapter {
         readonly info: PlatformInfo = {
-          platform: "telegram",
-          messageMaxLength: 4096,
-          documentCaptionMaxLength: 1024,
+          platform: "discord",
+          messageMaxLength: 2000,
+          documentCaptionMaxLength: 2000,
         };
         setChatId(_chatId: string): void {}
         sendMessage(_text: string, _options?: PlatformMessageOptions): Promise<PlatformMessageRef> {
@@ -255,12 +246,6 @@ describe("platform/types", () => {
         deleteMessage(_ref: PlatformMessageRef): Promise<void> {
           return Promise.resolve();
         }
-        pinMessage(_ref: PlatformMessageRef): Promise<void> {
-          return Promise.resolve();
-        }
-        unpinAllMessages(): Promise<void> {
-          return Promise.resolve();
-        }
         answerCallbackQuery(_id: string, _options?: PlatformCallbackQueryOptions): Promise<void> {
           return Promise.resolve();
         }
@@ -273,14 +258,20 @@ describe("platform/types", () => {
         getFileUrl(_fileId: string): Promise<string> {
           return Promise.resolve("https://example.com/file");
         }
+        addReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
+        }
+        removeReaction(_ref: PlatformMessageRef, _emoji: string): Promise<void> {
+          return Promise.resolve();
+        }
       }
 
       const adapter = new MockAdapter();
       const info = adapter.info;
       expect(info).toBeDefined();
-      expect(info.platform).toBe("telegram");
-      expect(info.messageMaxLength).toBe(4096);
-      expect(info.documentCaptionMaxLength).toBe(1024);
+      expect(info.platform).toBe("discord");
+      expect(info.messageMaxLength).toBe(2000);
+      expect(info.documentCaptionMaxLength).toBe(2000);
     });
   });
 
