@@ -549,9 +549,7 @@ describe("summary/aggregator", () => {
 
   describe("session.updated handling", () => {
     it("fires onSessionUpdated callback when session.updated received for active session", async () => {
-      // @ts-expect-error — setOnSessionUpdated not implemented yet (RED phase)
       const onSessionUpdated = vi.fn();
-      // @ts-expect-error
       summaryAggregator.setOnSessionUpdated(onSessionUpdated);
       summaryAggregator.setSession("session-1");
 
@@ -575,9 +573,7 @@ describe("summary/aggregator", () => {
     });
 
     it("does not fire onSessionUpdated for inactive session", async () => {
-      // @ts-expect-error
       const onSessionUpdated = vi.fn();
-      // @ts-expect-error
       summaryAggregator.setOnSessionUpdated(onSessionUpdated);
       summaryAggregator.setSession("session-1");
 
@@ -602,9 +598,7 @@ describe("summary/aggregator", () => {
     });
 
     it("does not fire onSessionUpdated when title is empty string", async () => {
-      // @ts-expect-error
       const onSessionUpdated = vi.fn();
-      // @ts-expect-error
       summaryAggregator.setOnSessionUpdated(onSessionUpdated);
       summaryAggregator.setSession("session-1");
 
@@ -625,6 +619,149 @@ describe("summary/aggregator", () => {
 
       await new Promise<void>((resolve) => setImmediate(resolve));
       expect(onSessionUpdated).not.toHaveBeenCalled();
+    });
+
+    it("does not fire onSessionUpdated when title is whitespace only", async () => {
+      const onSessionUpdated = vi.fn();
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-1",
+            title: "   ",
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).not.toHaveBeenCalled();
+    });
+
+    it("does not throw when no onSessionUpdated callback is registered", () => {
+      summaryAggregator.setSession("session-1");
+      // No setOnSessionUpdated call
+
+      expect(() => {
+        summaryAggregator.processEvent({
+          type: "session.updated",
+          properties: {
+            info: {
+              id: "session-1",
+              title: "Some Title",
+              slug: "",
+              projectID: "p1",
+              directory: "D:/repo",
+              version: "1",
+              time: { created: Date.now(), updated: Date.now() },
+            },
+          },
+        } as unknown as Event);
+      }).not.toThrow();
+    });
+
+    it("fires callback with full title even when >100 chars (truncation is adapter responsibility)", async () => {
+      const onSessionUpdated = vi.fn();
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+      const longTitle = "A".repeat(150);
+
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-1",
+            title: longTitle,
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).toHaveBeenCalledWith("session-1", longTitle);
+    });
+
+    it("fires callback on each unique session.updated event regardless of title", async () => {
+      // Note: de-duplication by title happens in bot.ts, not aggregator — aggregator always fires
+      const onSessionUpdated = vi.fn();
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-1");
+
+      const event = {
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-1",
+            title: "Same Title",
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event;
+
+      summaryAggregator.processEvent(event);
+      summaryAggregator.processEvent(event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      // Aggregator fires callback for EACH event — bot.ts handles dedup by comparing titles
+      expect(onSessionUpdated).toHaveBeenCalledTimes(2);
+      expect(onSessionUpdated).toHaveBeenCalledWith("session-1", "Same Title");
+    });
+
+    it("fires only for the active session when multiple session IDs appear", async () => {
+      const onSessionUpdated = vi.fn();
+      summaryAggregator.setOnSessionUpdated(onSessionUpdated);
+      summaryAggregator.setSession("session-active");
+
+      // This should fire
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-active",
+            title: "Active Session Title",
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      // This should NOT fire (different session)
+      summaryAggregator.processEvent({
+        type: "session.updated",
+        properties: {
+          info: {
+            id: "session-other",
+            title: "Other Session Title",
+            slug: "",
+            projectID: "p1",
+            directory: "D:/repo",
+            version: "1",
+            time: { created: Date.now(), updated: Date.now() },
+          },
+        },
+      } as unknown as Event);
+
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(onSessionUpdated).toHaveBeenCalledTimes(1);
+      expect(onSessionUpdated).toHaveBeenCalledWith("session-active", "Active Session Title");
     });
   });
 });
